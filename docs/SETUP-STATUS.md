@@ -7,7 +7,7 @@
 - Free 个人组织 `Pet Nest`；开发项目 `pet-nest-dev`，引用 `httzsurpqbbqwazrunsu`，Singapore 区域。数据库密码由用户本人设置，开发代理没有读取或保存。
 - 根目录 `.env.local` 保存前端公开 URL/key；`supabase/.env.local` 保存服务端 DeepSeek 配置；原始 `aip key.txt` 保留且忽略 Git。DeepSeek 密钥没有 VITE_ 前缀。
 - 用户已明确授权官方 Supabase CLI 登录，凭据名称 `Codex Pet Nest development`，可在账号中撤销。网页登录与 CLI 授权独立；本机已完成 CLI 授权，无需再次登录。
-- 三个数据库迁移均已应用，CLI 本地/远程历史一致；没有重复初始化或执行 reset。原 8 张业务表及新增短信去重表均开启 RLS，私有 pet-media 限制单文件 5 MiB。
+- 四个数据库迁移均已应用，CLI 本地/远程历史一致；没有重复初始化或执行 reset。原 9 张 P0 public 表和 8 张 P1 public 社区表均开启 RLS；pet-media/community-media 都是私有 bucket，限制单文件 5 MiB。P1 内部敏感词和计数表位于受限 schema。
 - `ai-chat`、`storage-cleanup`、`send-sms` 均已通过 CLI API 部署为 ACTIVE。共享依赖 import map 显式配置，部署的是原始多文件源码。
 - Secrets 已设置 `DEEPSEEK_API_KEY`、`DEEPSEEK_MODEL=deepseek-flash`、`ALLOWED_ORIGINS`，只允许本机 localhost/127.0.0.1:5173。
 - Auth Site URL 已改为 https://pet-nest-mobile.pages.dev，允许该站点根地址及 /auth、/profile 回跳，原本地域名及回跳仍保留。最短密码 8 位，邮箱和手机均要求验证。
@@ -31,7 +31,7 @@
 
 安全 advisor 发现平台自动 RLS 函数有过宽 EXECUTE 权限，已增加迁移收紧并重新检查。当前剩余 1 项提醒：`auth_leaked_password_protection`。官方文档说明泄露密码检测需 Pro 或更高套餐，当前 Free 项目未升级，保留提醒：[密码安全文档](https://supabase.com/docs/guides/auth/password-security)。不能将结果描述为“零提醒”。
 
-本机测试使用已有本地系统代理解决 Node 直连问题，只影响测试进程，没有改系统代理或关闭 TLS。前端已发布 https://pet-nest-mobile.pages.dev，供真实手机继续验收。P1/P2 未开始。
+本机测试使用已有本地系统代理解决 Node 直连问题，只影响测试进程，没有改系统代理或关闭 TLS。前端已有 P0 手机测试站点 https://pet-nest-mobile.pages.dev。用户现已授权 P1；成长曲线、社区源码与开发后端联调已完成，P1 前端发布情况以最新交付记录为准。P2 未开始。
 
 真实浏览器闭环及 24 个响应式布局检查已完成，结果见 TEST-RESULTS.md。用于验收的临时高权限 key 文件已移除；用户原有模型密钥文件和最终测试账号文件保留在本机且忽略 Git。CLI 账号授权仍可由用户在 Supabase 账号设置中撤销。Pages 网站独立于本地 Vite，手机测试无需保持开发服务运行；本机开发仍使用 `npm.cmd run dev`。
 

@@ -1,6 +1,24 @@
 # 接口约定
 
-业务 CRUD 使用 Supabase 官方 Auth / REST / Storage 协议，不包装成一套自定义 HTTP 格式。前端调用集中在 `src/lib/api.ts`。所有操作都要求当前用户的 access token，并由数据库 RLS 兜底。
+业务 CRUD 使用 Supabase 官方 Auth / REST / Storage 协议，不包装成一套自定义 HTTP 格式。P0 调用集中在 `src/lib/api.ts`，P1 社区调用集中在 `src/lib/community.ts`。所有操作都要求当前用户的 access token，并由数据库 RLS 兜底。
+
+## P1 接口
+
+| 接口                                                | 约定                                                                             |
+| --------------------------------------------------- | -------------------------------------------------------------------------------- |
+| getWeightRecords                                    | records 按本人 pet_id/type/date 查询，500 条分页，最多最新 2000 条并返回 limited |
+| community_set_profile(p_nickname)                   | 显式开通/修改社区昵称，1–32 字                                                   |
+| community_create_post(p_id,p_body,p_pet?)           | 同 UUID、同内容幂等；1–1000 字，只能选择本人宠物，创建私有 draft                 |
+| community_publish(p_post,p_images)                  | 校验实际 Storage 对象归属和最多 9 张路径；纯文字发布，图片 pending               |
+| community_feed(p_mode,p_offset,p_author?,p_post?)   | recommend/following/favorites/mine，每页 20；RLS 限制可见内容                    |
+| community_person / community_people                 | 独立社区昵称、关注状态及计数，关注/粉丝列表每页 20                               |
+| community_interact(p_target,p_kind,p_enabled)       | like/favorite/follow，明确设定状态，重复请求不反转                               |
+| community_add_comment(p_id,p_post,p_body,p_parent?) | 1–500 字、同请求幂等，仅同帖的一级评论可被回复                                   |
+| community_delete_post / community_delete_comment    | 仅本人；删除动态级联互动和图片队列，删除父评论级联回复                           |
+| community_report(p_id,p_reason,p_post?,p_comment?)  | 必须选择一种目标，1–200 字，本人/目标去重，报告私有                              |
+| community_review(p_post,p_approve,p_note)           | service_role/管理员专用，不能由普通客户端调用                                    |
+
+RPC 沿用 Supabase `{data,error}`，不额外包装；参数类型及错误映射见 shared/community.ts、src/lib/errors.ts。写入从 JWT 取 owner，服务器强制敏感词检查、配额、归属及幂等。审核流程和已知边界见 P1.md。
 
 ## Auth 与业务 CRUD
 

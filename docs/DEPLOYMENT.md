@@ -1,6 +1,6 @@
 # 本地配置与部署准备
 
-当前开发后端为 pet-nest-dev（引用 `httzsurpqbbqwazrunsu`），三份迁移和三个 Edge Functions 已部署。前端已发布到 [Cloudflare Pages 手机测试站点](https://pet-nest-mobile.pages.dev)，Auth 回跳与接口 origin 已同步；用户已反馈验证码输入修复后的测试通过。部署记录与更新操作见 [CLOUDFLARE-PAGES.md](CLOUDFLARE-PAGES.md)。新环境按下面步骤配置，不要覆盖已有环境文件。
+当前开发后端为 pet-nest-dev（引用 `httzsurpqbbqwazrunsu`），四份迁移和三个 Edge Functions 已部署。P1 迁移及双 bucket 清理函数已完成开发环境联调，审核操作见 [P1 说明](P1.md)。前端已有 [Cloudflare Pages 手机测试站点](https://pet-nest-mobile.pages.dev)，原 P0 发布记录见 [CLOUDFLARE-PAGES.md](CLOUDFLARE-PAGES.md)，P1 前端是否发布以最新交付记录为准。新环境按下面步骤配置，不要覆盖已有环境文件。
 
 ## 环境变量
 

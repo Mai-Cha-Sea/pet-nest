@@ -3,5 +3,6 @@ import App from './App.vue'
 import { router } from './router'
 import { initAuth } from './stores/auth'
 import './style.css'
+import './p1.css'
 initAuth()
 createApp(App).use(router).mount('#app')

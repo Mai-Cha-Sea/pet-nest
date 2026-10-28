@@ -35,7 +35,15 @@ try {
     })
   })
   let html = ''
-  for (const path of ['/', '/pets/new', '/ai']) {
+  for (const path of [
+    '/',
+    '/pets/new',
+    '/ai',
+    '/community',
+    '/community/new',
+    '/community/posts/00000000-0000-4000-8000-000000000000',
+    '/community/people/00000000-0000-4000-8000-000000000000',
+  ]) {
     const response = await fetch(`http://127.0.0.1:4173${path}`, {
       signal: AbortSignal.timeout(5000),
     })
@@ -47,7 +55,7 @@ try {
   assert.ok(script, '生产 JS 引用存在')
   const asset = await fetch(`http://127.0.0.1:4173${script}`, { signal: AbortSignal.timeout(5000) })
   assert.equal(asset.status, 200, '生产 JS HTTP')
-  console.log('PASS: 生产预览启动、首页与两个深层路由 HTTP 200，入口 JS 可读取。')
+  console.log('PASS: 生产预览启动、7 个 P0/P1 路由 HTTP 200，入口 JS 可读取。')
 } finally {
   child.kill()
   await new Promise((resolveExit) => {

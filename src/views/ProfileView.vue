@@ -73,6 +73,11 @@ async function save() {
     >
   </div>
   <Notice :error="error" :success="success" />
+  <RouterLink to="/community" class="panel community-profile-entry"
+    ><Icon name="community" /><span
+      ><strong>我的社区日常</strong><small>动态、收藏、关注与粉丝</small></span
+    ><Icon name="right" :size="17"
+  /></RouterLink>
   <p v-if="loading">正在读取个人资料…</p>
   <button v-if="loadFailed" class="button secondary" @click="load">重新加载</button>
   <div v-else-if="!loading" class="profile-layout">

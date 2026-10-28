@@ -62,7 +62,14 @@ vi.mock('../src/lib/supabase', () => ({
     },
   }),
 }))
-import { savePet, addRecord, history, validateImage, uploadAvatar } from '../src/lib/api'
+import {
+  savePet,
+  addRecord,
+  history,
+  validateImage,
+  uploadAvatar,
+  getWeightRecords,
+} from '../src/lib/api'
 const id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 const input = {
   name: '团子',
@@ -85,6 +92,20 @@ beforeEach(() => {
   state.reads = []
 })
 describe('API boundary regression tests (Supabase transport is mocked)', () => {
+  it('paginates weight records and scopes the query to the selected pet and type', async () => {
+    state.rows.records = Array.from({ length: 550 }, (_, n) => ({
+      id: `r${n}`,
+      occurred_at: '2026-10-28T00:00:00Z',
+      type: 'weight',
+      content: { weight: 4 },
+    }))
+    const result = await getWeightRecords(id, 365)
+    expect(result.records).toHaveLength(550)
+    expect(result.limited).toBe(false)
+    expect(state.reads.map((r) => r.from)).toEqual([0, 500])
+    expect(state.filters).toContainEqual({ table: 'records', column: 'pet_id', value: id })
+    expect(state.filters).toContainEqual({ table: 'records', column: 'type', value: 'weight' })
+  })
   const image = () =>
     new File([new Uint8Array([255, 216, 255])], 'avatar.jpg', { type: 'image/jpeg' })
   it('does not delete an avatar when its linking update succeeded but the response was lost', async () => {
