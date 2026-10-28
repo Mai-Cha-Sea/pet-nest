@@ -72,6 +72,8 @@ try {
   await rpc(a, 'community_create_post', {
     p_id: id,
     p_body: 'P1 自动验收临时动态：今天和毛孩子晒太阳。',
+    p_pet: null,
+    p_tags: ['猫咪日常', '晒太阳'],
   })
   assert.equal(checked(await b.from('community_posts').select('id').eq('id', id)).length, 0)
   assert.ok((await b.rpc('community_publish', { p_post: id, p_images: [] })).error)
@@ -83,9 +85,11 @@ try {
       password: process.env.TEST_USER_B_PASSWORD,
     }),
   )
-  assert.equal((await rpc(fresh, 'community_feed', { p_post: id }))[0].id, id)
-  await fresh.auth.signOut()
-  pass('draft isolation, owner-only publication and persistence in a fresh client')
+  const refreshed = (await rpc(fresh, 'community_feed', { p_post: id }))[0]
+  assert.equal(refreshed.id, id)
+  assert.deepEqual(refreshed.tags, ['猫咪日常', '晒太阳'])
+  await fresh.auth.signOut({ scope: 'local' })
+  pass('draft isolation, owner-only automatic publication and tag persistence in a fresh client')
   assert.equal(checked(await b.from('users').select('id').eq('id', userA.id)).length, 0)
   assert.ok((await b.from('community_posts').update({ status: 'published' }).eq('id', id)).error)
   assert.ok((await b.rpc('community_review', { p_post: id, p_approve: false })).error)
@@ -174,17 +178,18 @@ try {
     'base64',
   )
   checked(await a.storage.from('community-media').upload(path, png, { contentType: 'image/png' }))
-  assert.equal(
-    await rpc(a, 'community_publish', { p_post: imagePost, p_images: [path] }),
-    'pending',
-  )
   assert.equal(checked(await b.from('community_posts').select('id').eq('id', imagePost)).length, 0)
   assert.ok((await b.storage.from('community-media').createSignedUrl(path, 60)).error)
+  assert.equal(
+    await rpc(a, 'community_publish', { p_post: imagePost, p_images: [path] }),
+    'published',
+  )
+  assert.equal(checked(await b.from('community_posts').select('id').eq('id', imagePost)).length, 1)
   checked(await a.storage.from('community-media').createSignedUrl(path, 60))
   await rpc(admin, 'community_review', {
     p_post: imagePost,
     p_approve: true,
-    p_note: '明确的一像素自动化测试图片，不是用户 UGC 审核。',
+    p_note: '检查管理员复核接口仍可用，仅为一像素测试图片。',
   })
   assert.equal(checked(await b.from('community_posts').select('id').eq('id', imagePost)).length, 1)
   const signed = checked(await b.storage.from('community-media').createSignedUrl(path, 60))
@@ -195,7 +200,9 @@ try {
     p_note: '验收下架路径，随后清理。',
   })
   assert.ok((await b.storage.from('community-media').createSignedUrl(path, 60)).error)
-  pass('real Storage upload, pending-image isolation, service review, signed access and rejection')
+  pass(
+    'real Storage upload, draft-image isolation, keyword auto-publication, signed access and moderator takedown',
+  )
   const pet = checked(
     await a.from('pets').insert({ name: 'P1 曲线临时测试', species: 'cat' }).select('id').single(),
   )
@@ -251,5 +258,5 @@ try {
     process.exitCode = 1
   } else pass('only this run’s temporary posts, pet, follow and images cleaned up')
   await fs.writeFile('test-results/p1-cloud.json', JSON.stringify(report, null, 2))
-  await Promise.allSettled([a.auth.signOut(), b.auth.signOut()])
+  await Promise.allSettled([a.auth.signOut({ scope: 'local' }), b.auth.signOut({ scope: 'local' })])
 }

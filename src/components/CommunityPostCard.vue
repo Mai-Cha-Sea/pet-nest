@@ -92,6 +92,9 @@ async function remove() {
       <Icon name="paw" :size="14" />和 {{ item.pet_label }} 的日常
     </p>
     <p class="community-body">{{ item.body }}</p>
+    <div v-if="item.tags?.length" class="community-tags" aria-label="动态标签">
+      <span v-for="tag in item.tags" :key="tag">#{{ tag }}</span>
+    </div>
     <div
       v-if="item.image_paths.length"
       class="community-images"

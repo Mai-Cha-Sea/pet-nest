@@ -10,7 +10,7 @@ import {
 } from '../lib/community'
 import { userId } from '../stores/auth'
 import { configured } from '../lib/supabase'
-import { postSchema } from '../../shared/community'
+import { postSchema, parseTags } from '../../shared/community'
 import type { Pet } from '../../shared/domain'
 import { errorMessage } from '../lib/errors'
 import Icon from '../components/Icon.vue'
@@ -18,6 +18,7 @@ import Notice from '../components/Notice.vue'
 const router = useRouter(),
   body = ref(''),
   pet = ref(''),
+  tagText = ref(''),
   pets = ref<Pet[]>([]),
   files = ref<File[]>([]),
   previews = ref<string[]>([]),
@@ -84,10 +85,11 @@ async function submit() {
   error.value = ''
   try {
     postSchema.parse(body.value)
+    const tags = parseTags(tagText.value)
     for (const file of files.value) await validateImage(file)
     started.value = true
     progress.value = '正在保存这份日常…'
-    await createCommunityPost(id, body.value, pet.value || undefined)
+    await createCommunityPost(id, body.value, pet.value || undefined, tags)
     created = true
     for (let i = paths.length; i < files.value.length; i++) {
       progress.value = `正在上传第 ${i + 1} / ${files.value.length} 张图片…`
@@ -103,7 +105,7 @@ async function submit() {
       e &&
       typeof e === 'object' &&
       'message' in e &&
-      /CONTENT_BLOCKED|INVALID_POST|PET_NOT_FOUND|COMMUNITY_PROFILE_REQUIRED|COMMUNITY_RATE_LIMIT/.test(
+      /CONTENT_BLOCKED|INVALID_POST|INVALID_TAGS|PET_NOT_FOUND|COMMUNITY_PROFILE_REQUIRED|COMMUNITY_RATE_LIMIT/.test(
         String(e.message),
       )
     )
@@ -143,6 +145,13 @@ async function submit() {
       </label>
       <div class="community-char-count">{{ body.length }} / 1000</div>
       <label
+        >日常标签（可选）<input
+          v-model="tagText"
+          maxlength="128"
+          placeholder="例如：猫咪日常，晒太阳"
+        /><small>用逗号分隔，最多 3 个，每个最多 20 字。</small></label
+      >
+      <label
         >这次日常的主角（可选）<select v-model="pet">
           <option value="">不选择宠物</option>
           <option v-for="p in pets" :key="p.id" :value="p.id">{{ p.name }}</option></select
@@ -170,11 +179,7 @@ async function submit() {
       </div>
     </fieldset>
     <p class="community-publish-note">
-      {{
-        files.length
-          ? '包含图片的动态将先进入人工审核，通过后才会出现在社区。'
-          : '文字将通过服务端敏感词检查后发布。'
-      }}请勿上传他人隐私或不属于你的图片。
+      配文和标签通过自动检查后发布。请确认图片适合公开分享；当前不识别图片中的文字和画面，请勿上传他人隐私或不属于你的图片。
     </p>
     <p v-if="busy" role="status">{{ progress }}</p>
     <p v-else-if="started && error" class="muted">
@@ -182,15 +187,7 @@ async function submit() {
     </p>
     <div class="row wrap">
       <button class="button" :disabled="busy || !configured">
-        {{
-          busy
-            ? '提交中…'
-            : started && error
-              ? '重试这次提交'
-              : files.length
-                ? '提交图片审核'
-                : '发布日常'
-        }}</button
+        {{ busy ? '提交中…' : started && error ? '重试这次提交' : '发布日常' }}</button
       ><RouterLink to="/community" class="text-button">返回社区</RouterLink>
     </div>
   </form>

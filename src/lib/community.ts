@@ -7,6 +7,7 @@ import {
   postSchema,
   commentSchema,
   reportSchema,
+  tagsSchema,
 } from '../../shared/community'
 import type {
   CommunityPost,
@@ -35,11 +36,12 @@ export async function getCommunityPost(id: string) {
   if (!rows[0]) throw new Error('POST_NOT_FOUND')
   return rows[0]
 }
-export const createCommunityPost = (id: string, body: string, pet?: string) =>
+export const createCommunityPost = (id: string, body: string, pet?: string, tags: string[] = []) =>
   rpc<string>('community_create_post', {
     p_id: z.uuid().parse(id),
     p_body: postSchema.parse(body),
     p_pet: pet ? z.uuid().parse(pet) : null,
+    p_tags: tagsSchema.parse(tags),
   })
 export async function uploadCommunityImage(file: File, post: string) {
   const ext = await validateImage(file)

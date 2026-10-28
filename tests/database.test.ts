@@ -61,6 +61,96 @@ afterAll(async () => {
 
 describe('P1 community migration, RPC permissions and privacy', () => {
   const profile = (u = a) => as(u, "select public.community_set_profile('测试作者')")
+  it('validates tags on the server, includes them in feeds, and keeps legacy clients compatible', async () => {
+    await profile()
+    const id = crypto.randomUUID()
+    await as(a, "select public.community_create_post($1,'标签测试',null,$2)", [
+      id,
+      ['猫咪日常', '晒太阳'],
+    ])
+    await as(a, "select public.community_create_post($1,'标签测试',null,$2)", [
+      id,
+      ['猫咪日常', '晒太阳'],
+    ])
+    await expect(
+      as(a, "select public.community_create_post($1,'标签测试',null,$2)", [id, ['换标签']]),
+    ).rejects.toThrow(/IDEMPOTENCY_CONFLICT/)
+    for (const tags of [['a', 'b', 'c', 'd'], ['重复', '重复'], ['x'.repeat(21)], [null]]) {
+      await expect(
+        as(a, "select public.community_create_post($1,'非法标签',null,$2)", [
+          crypto.randomUUID(),
+          tags,
+        ]),
+      ).rejects.toThrow(/INVALID_TAGS/)
+    }
+    await expect(
+      as(a, "select public.community_create_post($1,'正常配文',null,$2)", [
+        crypto.randomUUID(),
+        ['裸 聊'],
+      ]),
+    ).rejects.toThrow(/CONTENT_BLOCKED/)
+    await as(a, "select public.community_publish($1,'{}')", [id])
+    const rows = (await as(b, 'select public.community_feed(p_post:=$1) as item', [id])).rows as {
+      item: { tags: string[] }
+    }[]
+    expect(rows[0]!.item.tags).toEqual(['猫咪日常', '晒太阳'])
+    await expect(
+      as(
+        '',
+        "select public.community_create_post($1,'匿名',null,'{}')",
+        [crypto.randomUUID()],
+        'anon',
+      ),
+    ).rejects.toThrow(/permission denied/)
+  })
+  it('normalizes zero-width and fullwidth characters without allowing clients to edit moderation rules', async () => {
+    await profile()
+    for (const text of ['裸\u200b聊', '裸\ufe0f聊', '出 售，毒药', '刷单返佣']) {
+      await expect(
+        as(a, 'select public.community_create_post($1,$2)', [crypto.randomUUID(), text]),
+      ).rejects.toThrow(/CONTENT_BLOCKED/)
+    }
+    await db.exec("insert into community_private.blocked_words values('spamword')")
+    try {
+      await expect(
+        as(a, 'select public.community_create_post($1,$2)', [
+          crypto.randomUUID(),
+          'ｓｐａｍｗｏｒｄ',
+        ]),
+      ).rejects.toThrow(/CONTENT_BLOCKED/)
+    } finally {
+      await db.exec("delete from community_private.blocked_words where word='spamword'")
+    }
+    await expect(
+      as(a, "insert into community_private.blocked_words values('安全')"),
+    ).rejects.toThrow(/permission denied/)
+    await expect(
+      db.exec("insert into community_private.blocked_words values('---')"),
+    ).rejects.toThrow(/check constraint/)
+  })
+  it('retains old pending privacy and rejects attempts to republish a moderator-rejected post', async () => {
+    const id = await post(a, '旧版待审测试', false)
+    await as(
+      a,
+      "update public.community_posts set status='pending' where id=$1",
+      [id],
+      'service_role',
+    )
+    expect(
+      (await as(b, 'select * from public.community_posts where id=$1', [id])).rows,
+    ).toHaveLength(0)
+    await expect(as(b, "select public.community_publish($1,'{}')", [id])).rejects.toThrow(
+      /POST_NOT_FOUND/,
+    )
+    await as(a, "select public.community_publish($1,'{}')", [id])
+    expect(
+      (await as(b, 'select * from public.community_posts where id=$1', [id])).rows,
+    ).toHaveLength(1)
+    await as(a, "select public.community_review($1,false,'人工复核下架')", [id], 'service_role')
+    await expect(as(a, "select public.community_publish($1,'{}')", [id])).rejects.toThrow(
+      /POST_ALREADY_SUBMITTED/,
+    )
+  })
   async function post(u = a, body = '今天天气不错，和毛孩子晒太阳', publish = true) {
     const id = crypto.randomUUID()
     await profile(u)
@@ -150,17 +240,21 @@ describe('P1 community migration, RPC permissions and privacy', () => {
       ]),
     ).rejects.toThrow(/INVALID_COMMENT/)
   })
-  it('keeps image submissions pending until a service reviewer approves them', async () => {
+  it('auto-publishes valid image posts after text checks and still permits service-only takedown', async () => {
     const id = await post(a, '图文', false),
       path = `${a}/posts/${id}/${crypto.randomUUID()}.png`
     await as(a, "insert into storage.objects(bucket_id,name) values('community-media',$1)", [path])
-    await as(a, 'select public.community_publish($1,$2)', [id, [path]])
-    expect(
-      (await as(b, 'select * from public.community_posts where id=$1', [id])).rows,
-    ).toHaveLength(0)
     expect(
       (await as(b, "select * from storage.objects where bucket_id='community-media'")).rows,
     ).toHaveLength(0)
+    const published = await as(a, 'select public.community_publish($1,$2) as status', [id, [path]])
+    expect(published.rows).toEqual([{ status: 'published' }])
+    expect(
+      (await as(b, 'select * from public.community_posts where id=$1', [id])).rows,
+    ).toHaveLength(1)
+    expect(
+      (await as(b, "select * from storage.objects where bucket_id='community-media'")).rows,
+    ).toHaveLength(1)
     await as(a, "select public.community_review($1,true,'人工检查通过')", [id], 'service_role')
     expect(
       (await as(b, 'select * from public.community_posts where id=$1', [id])).rows,

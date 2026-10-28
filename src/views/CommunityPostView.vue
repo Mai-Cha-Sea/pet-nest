@@ -9,6 +9,7 @@ import {
   addComment,
   deleteComment,
   reportContent,
+  publishCommunityPost,
 } from '../lib/community'
 import { configured } from '../lib/supabase'
 import { session } from '../stores/auth'
@@ -127,6 +128,21 @@ async function report() {
     reporting.value = undefined
     reason.value = ''
     success.value = '举报已提交，等待管理员人工复审。'
+  } catch (e) {
+    error.value = errorMessage(e)
+  } finally {
+    busy.value = false
+  }
+}
+async function resubmit() {
+  if (!post.value || busy.value) return
+  busy.value = true
+  error.value = ''
+  try {
+    await publishCommunityPost(id, post.value.image_paths)
+    post.value = await getCommunityPost(id)
+    success.value = '自动检查通过，动态已发布。'
+    await loadComments()
   } catch (e) {
     error.value = errorMessage(e)
   } finally {
@@ -263,7 +279,21 @@ async function report() {
     </button>
   </section>
   <p v-else-if="post" class="panel community-publish-note">
-    这条动态尚未公开，只有你能查看。图片需要管理员人工审核；可返回“我的动态”查看状态。
+    这条动态尚未公开，只有你能查看。{{
+      post.status === 'pending'
+        ? '这是此前的待审内容，你可以主动重新提交自动检查。'
+        : post.status === 'rejected'
+          ? '请根据审核说明调整内容后重新发布。'
+          : '上传或提交尚未完成，可返回“我的动态”核对草稿。'
+    }}
+    <button
+      v-if="post.status === 'pending'"
+      class="button secondary"
+      :disabled="busy"
+      @click="resubmit"
+    >
+      {{ busy ? '检查中…' : '重新提交自动审核' }}
+    </button>
   </p>
   <p class="community-disclaimer">社区分享不构成诊疗意见，涉及症状或用药请联系线下宠物医院。</p>
   <ConfirmDialog

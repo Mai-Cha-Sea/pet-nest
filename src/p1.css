@@ -105,6 +105,21 @@
   font-size: 14px;
   line-height: 1.9;
 }
+.community-tags {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 12px 0 18px;
+  font-size: 12px;
+  color: var(--green);
+}
+.community-tags span {
+  padding: 4px 9px;
+  border-radius: 6px;
+  background: var(--soft);
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
 .community-pet {
   display: flex;
   align-items: center;

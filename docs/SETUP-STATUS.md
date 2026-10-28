@@ -7,7 +7,7 @@
 - Free 个人组织 `Pet Nest`；开发项目 `pet-nest-dev`，引用 `httzsurpqbbqwazrunsu`，Singapore 区域。数据库密码由用户本人设置，开发代理没有读取或保存。
 - 根目录 `.env.local` 保存前端公开 URL/key；`supabase/.env.local` 保存服务端 DeepSeek 配置；原始 `aip key.txt` 保留且忽略 Git。DeepSeek 密钥没有 VITE_ 前缀。
 - 用户已明确授权官方 Supabase CLI 登录，凭据名称 `Codex Pet Nest development`，可在账号中撤销。网页登录与 CLI 授权独立；本机已完成 CLI 授权，无需再次登录。
-- 四个数据库迁移均已应用，CLI 本地/远程历史一致；没有重复初始化或执行 reset。原 9 张 P0 public 表和 8 张 P1 public 社区表均开启 RLS；pet-media/community-media 都是私有 bucket，限制单文件 5 MiB。P1 内部敏感词和计数表位于受限 schema。
+- 五个数据库迁移均已应用，CLI 本地/远程历史一致；没有重复初始化或执行 reset。原 9 张 P0 public 表和 8 张 P1 public 社区表均开启 RLS；pet-media/community-media 都是私有 bucket，限制单文件 5 MiB。P1 内部敏感词和计数表位于受限 schema。
 - `ai-chat`、`storage-cleanup`、`send-sms` 均已通过 CLI API 部署为 ACTIVE。共享依赖 import map 显式配置，部署的是原始多文件源码。
 - Secrets 已设置 `DEEPSEEK_API_KEY`、`DEEPSEEK_MODEL=deepseek-flash`、`ALLOWED_ORIGINS`，只允许本机 localhost/127.0.0.1:5173。
 - Auth Site URL 已改为 https://pet-nest-mobile.pages.dev，允许该站点根地址及 /auth、/profile 回跳，原本地域名及回跳仍保留。最短密码 8 位，邮箱和手机均要求验证。

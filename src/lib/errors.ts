@@ -1,6 +1,7 @@
 import { ZodError } from 'zod'
 const messages: Record<string, string> = {
   CONTENT_BLOCKED: '内容包含不适合社区分享的词语，请调整后提交。',
+  INVALID_TAGS: '最多填写 3 个不重复的标签，每个 1–20 字。',
   COMMUNITY_PROFILE_REQUIRED: '请先到宠友社区设置公开昵称，再进行互动。',
   COMMUNITY_RATE_LIMIT: '今天的社区操作次数已达上限，请明天再试。',
   POST_NOT_FOUND: '动态不存在、未公开或已被移除。',

@@ -38,6 +38,7 @@ const post: CommunityPost = {
   nickname: '测试宠友',
   body: '<img src=x onerror=alert(1)> 今天的小快乐',
   pet_label: null,
+  tags: ['猫咪日常'],
   image_paths: [],
   status: 'published',
   moderation_note: '',
@@ -185,11 +186,31 @@ describe('P1 real Vue interaction flows with mocked transport', () => {
     expect(wrapper.get('.community-comment').text()).toContain('小家伙真可爱')
     expect(wrapper.text()).toContain('评论已发表')
   })
-  it('keeps pending image posts private in the UI and hides interaction controls', async () => {
+  it('keeps legacy pending posts private until their author requests automatic rechecking', async () => {
     mocks.getCommunityPost.mockResolvedValue({ ...post, status: 'pending' })
     const { wrapper } = await render(CommunityPostView, `/community/posts/${post.id}`)
-    expect(wrapper.text()).toContain('图片待人工审核')
+    expect(wrapper.text()).toContain('待重新提交审核')
     expect(wrapper.find('.community-comments').exists()).toBe(false)
     expect(mocks.getComments).not.toHaveBeenCalled()
+    mocks.getCommunityPost.mockResolvedValue({ ...post, status: 'published' })
+    await wrapper.get('button.button.secondary').trigger('click')
+    await flushPromises()
+    expect(mocks.publishCommunityPost).toHaveBeenCalledWith(post.id, [])
+    expect(wrapper.find('.community-comments').exists()).toBe(true)
+  })
+  it('submits at most three tags and explains that image semantics are not inspected', async () => {
+    const { wrapper } = await render(CommunityComposeView)
+    await wrapper.get('textarea').setValue('和小猫一起晒太阳')
+    const tags = wrapper.get('input[placeholder="例如：猫咪日常，晒太阳"]')
+    await tags.setValue('a,b,c,d')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(wrapper.text()).toContain('最多 3 个标签')
+    expect(mocks.createCommunityPost).not.toHaveBeenCalled()
+    await tags.setValue('#猫咪日常，晒太阳')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(mocks.createCommunityPost.mock.calls[0]![3]).toEqual(['猫咪日常', '晒太阳'])
+    expect(wrapper.text()).toContain('当前不识别图片中的文字和画面')
   })
 })
