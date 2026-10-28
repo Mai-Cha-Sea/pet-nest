@@ -1,0 +1,46 @@
+{
+  "name": "pet-nest",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vue-tsc -b && vite build && node scripts/check-client.mjs",
+    "preview": "vite preview --host 127.0.0.1",
+    "typecheck": "vue-tsc -b",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "npm run typecheck && npm run typecheck:edge && npm test && npm run build",
+    "format": "prettier --write src shared tests scripts docs *.json *.ts *.md supabase/functions",
+    "format:check": "prettier --check src shared tests scripts docs *.json *.ts *.md supabase/functions",
+    "test:database": "vitest run tests/database.test.ts",
+    "test:live": "node scripts/live-smoke.mjs",
+    "test:cloud": "node scripts/cloud-acceptance.mjs",
+    "test:preview": "node scripts/verify-preview.mjs",
+    "check:auth": "node --env-file=.env.local scripts/verify-auth-settings.mjs",
+    "package:pages": "npm run build && powershell.exe -NoProfile -File scripts/package-pages.ps1",
+    "test:pages": "node --env-file=.env.local scripts/verify-pages.mjs",
+    "typecheck:edge": "deno check --config supabase/functions/deno.json supabase/functions/ai-chat/index.ts supabase/functions/storage-cleanup/index.ts supabase/functions/send-sms/index.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.118.0",
+    "lucide-vue-next": "^0.468.0",
+    "vue": "^3.5.0",
+    "vue-router": "^4.5.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.3.0",
+    "@types/node": "^24.0.0",
+    "@vitejs/plugin-vue": "^6.0.0",
+    "@vue/test-utils": "2.4.6",
+    "deno": "^2.9.6",
+    "jsdom": "^26.1.0",
+    "prettier": "3.9.10",
+    "standardwebhooks": "1.0.0",
+    "typescript": "~5.9.0",
+    "vite": "^7.0.0",
+    "vitest": "^3.2.0",
+    "vue-tsc": "^3.1.0"
+  }
+}

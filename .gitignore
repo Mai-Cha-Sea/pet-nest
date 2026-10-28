@@ -1,0 +1,19 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+!.env.test.example
+!.env.sms.example
+coverage/
+*.local
+supabase/.temp/
+supabase/.branches/
+.tools/
+test-results/
+*.tsbuildinfo
+/api key.txt
+/aip key.txt
+/1793160748465.txt
+/测试账号.local.md
+/artifacts/pages/

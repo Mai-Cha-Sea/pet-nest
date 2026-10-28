@@ -1,0 +1,49 @@
+project_id = "pet-nest"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 17
+
+[auth]
+enabled = true
+site_url = "https://pet-nest-mobile.pages.dev"
+additional_redirect_urls = ["http://127.0.0.1:5173","http://127.0.0.1:5173/auth","http://localhost:5173/auth","http://127.0.0.1:5173/profile","http://localhost:5173/profile","https://pet-nest-mobile.pages.dev","https://pet-nest-mobile.pages.dev/auth","https://pet-nest-mobile.pages.dev/profile"]
+minimum_password_length = 8
+
+[auth.email]
+enable_signup = true
+enable_confirmations = true
+
+[auth.sms]
+enable_signup = true
+# CLI 2.122.0 将此字段直接映射到 sms_autoconfirm，false 才要求验证码。
+# 部署后必须运行 check:auth，确认云端 phone_autoconfirm=false；升级 CLI 后重核映射。
+enable_confirmations = false
+max_frequency = "60s"
+otp_length = 6
+otp_expiry = 300
+
+# 服务端签名密钥由环境变量注入，真实值不写入版本库。
+[auth.hook.send_sms]
+enabled = true
+uri = "https://httzsurpqbbqwazrunsu.supabase.co/functions/v1/send-sms"
+secrets = "env(SEND_SMS_HOOK_SECRET)"
+
+[functions.ai-chat]
+verify_jwt = false
+import_map = "./functions/deno.json"
+
+[functions.storage-cleanup]
+verify_jwt = false
+import_map = "./functions/deno.json"
+
+[functions.send-sms]
+verify_jwt = false
+import_map = "./functions/deno.json"
