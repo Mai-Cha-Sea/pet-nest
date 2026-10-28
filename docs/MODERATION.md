@@ -13,6 +13,12 @@
 
 来源：[Azure 价格及免费档限制](https://azure.microsoft.com/en-us/pricing/details/content-safety/)、[Azure 支持语言与媒体](https://learn.microsoft.com/en-us/azure/ai-services/content-safety/overview)、[腾讯云免费试用说明](https://cloud.tencent.com/document/faq/1125/62796)、[阿里云 1.0 开通/试用](https://help.aliyun.com/zh/document_detail/69806.html)、[阿里云增强版计费](https://help.aliyun.com/zh/document_detail/477720.html)、[Cloudflare 免费额度](https://developers.cloudflare.com/workers-ai/platform/pricing/)、[Llama Guard 模型说明](https://developers.cloudflare.com/workers-ai/models/llama-guard-3-8b/)。开通前应重新核对控制台资格和价格，未进行任何真实审核 API 调用测试。
 
+## Azure 开户核查与最终决定（2026-10-28）
+
+用户曾提出改用 Azure，随后说明没有可用于开户的信用卡。经官方资料核实：普通 Azure 免费账户需要手机号、Microsoft/GitHub 账号及信用卡或非预付费借记卡，具体卡种与地区有关；Azure for Students 免信用卡，但要求符合年龄/全日制学籍条件，并通过学校邮箱验证。分别见[普通账户开户要求](https://azure.microsoft.com/en-us/pricing/purchase-options/azure-account)、[学生账户](https://azure.microsoft.com/en-us/free/students)、[学生资格条款](https://azure.microsoft.com/en-us/pricing/offers/ms-azr-0170p)。因此不能笼统写成“所有 Azure 账户必须有信用卡”。
+
+用户了解上述区别后，明确选择“放弃 Azure，保留词库审核”。本次只准备过服务端占位配置，未创建 Azure 账户/资源、取得或部署其 Key，也未发送审核请求。未填写的临时配置已清理，Azure 切换未部署，现有词库自动审核、举报复审、数据和发布行为保持原样。
+
 ## 当前发布行为
 
 新文字和图文动态都通过数据库自动检查后发布：昵称、配文、可选宠物名称与最多 3 个标签执行敏感词检查；评论继续执行相同规则。检查发生在服务端，直接调用 RPC 也不能绕过。发布时再次检查配文、标签及宠物名称，避免草稿保存后规则发生变化而跳过新规则。
