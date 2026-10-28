@@ -8,7 +8,9 @@
 
 真实 `.env` 配置、模型/阿里云密钥原文件、测试账号文件、临时工具/日志、node_modules、dist 和 Pages ZIP 均由 `.gitignore` 排除。上传前检查文件清单、已知真实密钥/密码、常见凭据格式及 Word XML；私有仓库也不作为密钥备份。
 
-Git 提交使用本项目的本地设置和 GitHub 隐私邮箱，不改电脑全局 Git 身份。首次上传分支对齐新仓库的默认 main。GitHub 网页登录与本机 Git 授权独立；需要授权时，通过官方 Git Credential Manager 完成，密码和令牌不写入源码或远程 URL。
+Git 提交使用本项目的本地设置和 GitHub 隐私邮箱，不改电脑全局 Git 身份。首次上传分支对齐新仓库的默认 main。GitHub 网页登录与本机 Git 授权独立；需要授权时，通过官方 Git Credential Manager 或 GitHub CLI 完成，密码和令牌不写入源码或远程 URL。
+
+本次内置 Git Credential Manager 连接未返回，实际改用官方 GitHub CLI 2.103.3，由用户在 GitHub 页面亲自完成授权，凭据保存在 Windows 凭据库。上传时仅给当前 Git 命令指定 CLI 凭据助手，没有改全局助手设置；其他电脑需要自行安装、登录官方工具，并按其说明配置 Git。
 
 ## 下载并运行
 
