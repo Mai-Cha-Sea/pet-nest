@@ -1,4 +1,8 @@
 // @vitest-environment jsdom
+/**
+ * 挂载真实宠物/记录/AI Vue 页面，模拟 API 边界验证完整交互状态。
+ * 包含部分保存、相同 UUID 重试、即时回答、历史滞后与 pending 轮询停止；不发真实模型请求。
+ */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createRouter, createMemoryHistory } from 'vue-router'

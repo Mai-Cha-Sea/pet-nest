@@ -1,3 +1,8 @@
+/**
+ * 只读验收已发布的 Pages：入口与全部 JS/CSS 的摘要、安全头、CORS 及未登录拒绝。
+ * 匹配对象是当前 dist；部署旧包时失败是有效信号，不能改断言掩盖版本不一致。
+ * 不发模型请求/短信；报告写入被 Git 忽略的 test-results。
+ */
 import assert from 'node:assert/strict'
 import fs from 'node:fs/promises'
 import { createHash } from 'node:crypto'
@@ -9,6 +14,9 @@ const key = process.env.VITE_SUPABASE_ANON_KEY
 assert.ok(backend && key, '请载入 .env.local 的前端公开配置。')
 const checks = []
 const digest = (data) => createHash('sha256').update(data).digest('hex')
+/**
+ * 向同一 HTTPS 发布 origin 发起带 20 秒超时的只读请求；后续逐项验证状态和内容。
+ */
 async function get(path) {
   return fetch(origin + path, { signal: AbortSignal.timeout(20000) })
 }

@@ -1,4 +1,8 @@
 // @vitest-environment jsdom
+/**
+ * 挂载真实社区 Vue 组件，mock RPC/Storage 边界以测试重试、即时反馈和明确拒绝。
+ * 夹具仅用于测试，不进入应用；状态变化须在等待 Vue 更新后断言。
+ */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'

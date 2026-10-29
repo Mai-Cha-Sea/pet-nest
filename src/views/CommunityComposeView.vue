@@ -1,4 +1,9 @@
 <script setup lang="ts">
+/**
+ * 社区动态发布：创建草稿 → 分步上传图片 → 词库校验并发布。
+ * 一个页面实例固定一个动态 UUID，失败后复用已经上传的路径，避免重复发帖/上传。
+ * started 锁定不确定结果下的原表单，created 表示已确认草稿保存，paths 记录成功上传的对象。
+ */
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getPets, validateImage } from '../lib/api'
@@ -28,10 +33,16 @@ const router = useRouter(),
   error = ref(''),
   progress = ref(''),
   started = ref(false)
+/**
+ * 此动态和已上传路径跨重试保持稳定；新建另一条动态需要重新进入发布页。
+ */
 const id = crypto.randomUUID(),
   paths: string[] = []
 let mounted = true,
   created = false
+/**
+ * 核对是否已显式开通社区昵称，并读取可选择的本人宠物；不自动开通。
+ */
 async function load() {
   if (!configured) {
     loading.value = false
@@ -50,6 +61,9 @@ async function load() {
   }
 }
 onMounted(load)
+/**
+ * 释放本地 blob 预览 URL，只清理浏览器资源，不删除云端对象。
+ */
 function release() {
   previews.value.forEach((url) => URL.revokeObjectURL(url))
   previews.value = []
@@ -58,6 +72,9 @@ onUnmounted(() => {
   mounted = false
   release()
 })
+/**
+ * 追加经文件检查的图片，控制总数；卸载期间验证结束时不再创建预览。
+ */
 async function choose(e: Event) {
   const input = e.target as HTMLInputElement,
     selected = Array.from(input.files || [])
@@ -74,11 +91,19 @@ async function choose(e: Event) {
     input.value = ''
   }
 }
+/**
+ * 提交前移除一张本地预览，保持 files/previews 索引一致。
+ */
 function remove(index: number) {
   URL.revokeObjectURL(previews.value[index]!)
   previews.value.splice(index, 1)
   files.value.splice(index, 1)
 }
+/**
+ * 分步提交：保存同 ID 草稿、续传未完成图片、关联并发布。
+ * 网络结果未知时保留 started/created/paths，禁止改动原请求以免产生幂等冲突；
+ * 尚未确认创建且被明确校验/词库拒绝时允许纠正表单。回归见 community-views.test.ts。
+ */
 async function submit() {
   if (busy.value || !ready.value) return
   busy.value = true

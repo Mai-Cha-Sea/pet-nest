@@ -1,4 +1,8 @@
 <script setup lang="ts">
+/**
+ * 匿名协议阅读页，kind 由路由固定传入，在同一组件显示两份纯文本正文。
+ * 阅读与注册同意分开，打开此页不会创建账号或勾选同意。
+ */
 import { computed } from 'vue'
 import { legalDocuments, providerLinks } from '../content/legal'
 const props = defineProps<{ kind: 'terms' | 'privacy' }>()

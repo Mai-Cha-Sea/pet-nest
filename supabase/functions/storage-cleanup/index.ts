@@ -1,3 +1,8 @@
+/**
+ * 处理当前已验证用户的持久图片清理队列，每个 bucket 每次最多 100 条。
+ * 先调用 Storage API 删除实际文件，成功后才移除队列项；失败保留队列供后续重试。
+ * 此入口不遍历未关联孤立对象，也没有自动定时调度；由登录/后续操作尽力触发。
+ */
 import { createClient } from '@supabase/supabase-js'
 import { allowedOrigin, corsHeaders } from '../_shared/ai-handler.ts'
 const env = (name: string) => Deno.env.get(name)
@@ -17,6 +22,8 @@ Deno.serve(async (request: Request) => {
   const { data: auth, error: authError } = await db.auth.getUser(token)
   if (authError || !auth.user) return json(401, { error: { code: 'UNAUTHORIZED' } })
   let removed = 0
+  // 高权限客户端不会自动套用普通用户 RLS；队列读取与删除都必须带 auth.user.id。
+  // 只删队列中明确关联的对象，不按浏览器自报的路径执行删除。
   for (const [table, bucket] of [
     ['storage_cleanup', 'pet-media'],
     ['community_media_cleanup', 'community-media'],

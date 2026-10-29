@@ -1,6 +1,6 @@
 # GitHub 源码仓库
 
-仓库：https://github.com/Mai-Cha-Sea/pet-nest 。用户指定创建的私有仓库，保存项目源码、数据库迁移、占位环境示例、测试及开发文档。公开手机测试网站仍为 https://pet-nest-mobile.pages.dev 。
+仓库：https://github.com/Mai-Cha-Sea/pet-nest 。最初按用户要求创建为私有，用户已于 2026-10-29 手动改为公开并确认。保存项目源码、数据库迁移、占位环境示例、测试及开发文档；真实配置不随源码公开，检查范围见 [SECRET-SAFETY.md](SECRET-SAFETY.md)。公开手机测试网站仍为 https://pet-nest-mobile.pages.dev 。
 
 ## P1 版本更新
 
@@ -24,7 +24,7 @@ cd pet-nest
 npm.cmd ci
 ```
 
-私有仓库需要登录拥有权限的 GitHub 账号。新电脑按 README 从 `.env.example` 准备本机公开 Supabase 配置，已有环境文件不要覆盖；服务端密钥只在 Supabase Secrets。克隆仓库不会自动获得本机的真实配置和测试账号密码。
+当前公开仓库可直接克隆，推送仍需要有写入权限的 GitHub 账号。新电脑按 README 从 `.env.example` 准备本机公开 Supabase 配置，已有环境文件不要覆盖；服务端密钥只在 Supabase Secrets。克隆仓库不会自动获得本机的真实配置和测试账号密码。
 
 ## 后续更新
 

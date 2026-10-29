@@ -1,3 +1,8 @@
+/**
+ * 将 SDK、业务错误码与 Zod 校验错误转换为统一的用户提示。
+ * 新增服务端错误码时在此补映射；未知短消息会保留，不是敏感资料清洗器。
+ * 调用端须先去敏，不应传入含密钥的上游原始响应或调试堆栈。
+ */
 import { ZodError } from 'zod'
 const messages: Record<string, string> = {
   CONTENT_BLOCKED: '内容包含不适合社区分享的词语，请调整后提交。',
@@ -32,6 +37,9 @@ const messages: Record<string, string> = {
     '短信发送失败，请稍后重试；若持续失败，请联系管理员检查短信额度、签名和模板。',
   SMS_STATE_UNAVAILABLE: '短信请求暂时无法确认，请稍后重试。',
 }
+/**
+ * 接收 unknown 错误，优先匹配业务/Auth 代码，输出面向用户的中文文字。
+ */
 export function errorMessage(e: unknown): string {
   if (e instanceof ZodError) return e.issues.map((i) => i.message).join('；')
   const raw =

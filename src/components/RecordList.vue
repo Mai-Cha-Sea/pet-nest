@@ -1,4 +1,8 @@
 <script setup lang="ts">
+/**
+ * 单宠物六类记录的筛选、倒序分页、删除确认和关联图片展示。
+ * changed 事件让详情页刷新成长图；generation 防止旧宠物/筛选请求覆盖新结果。
+ */
 import { ref, watch } from 'vue'
 import type { RecordType, PetRecord } from '../../shared/domain'
 import { recordTypes, recordLabels, recordSummary } from '../../shared/domain'
@@ -18,6 +22,9 @@ const filter = ref<RecordType | ''>(''),
   deleting = ref<PetRecord | null>(null),
   deletingBusy = ref(false)
 let generation = 0
+/**
+ * 读取当前宠物/类型的一页，版本一致才替换或追加；hasMore 由 50 条页长推断。
+ */
 async function load(more = false) {
   const current = ++generation
   busy.value = true
@@ -46,6 +53,9 @@ watch(
   },
   { immediate: true },
 )
+/**
+ * 执行已确认的删除，通知父级刷新图表，再重新读取时间轴首屏。
+ */
 async function confirmDelete() {
   if (!deleting.value) return
   deletingBusy.value = true

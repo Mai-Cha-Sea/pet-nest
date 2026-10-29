@@ -1,3 +1,8 @@
+/**
+ * 协议声明留存、不可伪改及获赞统计的开发云端专项验收。
+ * 显式开关与管理凭据后才创建临时账号/动态；finally 清理，不发送短信、邮件或模型请求。
+ * 此脚本只验证所列专项，不替代完整 P0/P1 测试。
+ */
 // Narrow development acceptance for consent snapshots and received-like totals.
 import fs from 'node:fs/promises'
 import assert from 'node:assert/strict'

@@ -1,4 +1,8 @@
 <script setup lang="ts">
+/**
+ * 可复用的信息流：模式/作者/修订号变化时重载，按服务端偏移分页。
+ * 排序随互动可能变化，按动态 ID 去重；version 防止较旧响应或卸载后的响应覆盖界面。
+ */
 import { ref, watch, onUnmounted } from 'vue'
 import type { CommunityPost, FeedMode } from '../../shared/community'
 import { getFeed } from '../lib/community'
@@ -14,6 +18,10 @@ const items = ref<CommunityPost[]>([]),
   hasMore = ref(false)
 let version = 0,
   offset = 0
+/**
+ * 新筛选清空列表并重置偏移；追加时按服务端返回行数推进，按 ID 合并去重。
+ * 不把去重后的展示条数当作服务端偏移，否则推荐排序变化时容易重复翻页。
+ */
 async function load(more = false) {
   if (!configured) return
   const current = ++version

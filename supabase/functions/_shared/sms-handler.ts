@@ -1,7 +1,15 @@
+/**
+ * 短信 Hook 编排：有界读取原始正文 → Webhook 验签 → 配置/号码检查 → 事件去重 → 发送。
+ * 验证码由 Supabase Auth 生成并校验，阿里云只负责传送相同验证码。
+ * 供应商结果未知或事件仍 pending 时不自动重发，避免重复短信及费用。
+ */
 import { Webhook } from 'standardwebhooks'
 import { z } from 'zod'
 import { sendAliyunSms } from './aliyun-sms.ts'
 
+/**
+ * 事件级幂等仓库；一次 Hook 只受理一次发送，pending/failed 不静默重发。
+ */
 export interface SmsRepository {
   reserve(id: string): Promise<{ duplicate: boolean; status: string }>
   finish(id: string, status: 'sent' | 'failed', code: string): Promise<void>
@@ -15,6 +23,9 @@ const payloadSchema = z.object({
   user: z.object({ phone: z.string().optional(), new_phone: z.string().optional() }).passthrough(),
   sms: z.object({ otp: z.string().regex(/^\d{6}$/), phone: z.string().optional() }).passthrough(),
 })
+/**
+ * 保留原始正文用于 HMAC 验签，最多 32768 字节；不能先解析再重新序列化后验签。
+ */
 async function boundedText(request: Request) {
   const reader = request.body?.getReader()
   if (!reader) throw new Error('EMPTY_BODY')
@@ -32,6 +43,10 @@ async function boundedText(request: Request) {
     body += decoder.decode(value, { stream: true })
   }
 }
+/**
+ * 生成只接受 Auth Hook 的 POST 处理器，不是浏览器公开短信 API。
+ * 所有配置/事件状态检查先于供应商调用；返回标准 Hook 错误而不暴露上游载荷。
+ */
 export function createSmsHandler(deps: SmsDeps) {
   return async (request: Request) => {
     const respond = (status: number, message?: string) =>
@@ -97,6 +112,8 @@ export function createSmsHandler(deps: SmsDeps) {
     } catch {
       return respond(503, 'SMS_STATE_UNAVAILABLE')
     }
+    // 只有已确认 sent 的重复事件返回成功；pending/failed 代表不能确认已送达。
+    // 此处拒绝再次发同一事件，用户重新申请验证码才产生新的事件 ID。
     if (reserved.duplicate)
       return reserved.status === 'sent'
         ? respond(200)

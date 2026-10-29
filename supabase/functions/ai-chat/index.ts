@@ -1,3 +1,8 @@
+/**
+ * AI Edge 入口：组装环境、数据库仓库、HTTP 传输和真实用户鉴权。
+ * 服务端高权限客户端用于受控查询；用户身份由 Auth getUser(token) 核实后传入 handler。
+ * 网关关闭内置 JWT 校验不代表匿名开放，本函数在处理业务前自行验证 token。
+ */
 import { createClient } from '@supabase/supabase-js'
 import { createAIHandler } from '../_shared/ai-handler.ts'
 import { repository } from '../_shared/repository.ts'

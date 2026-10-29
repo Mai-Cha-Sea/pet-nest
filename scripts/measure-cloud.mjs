@@ -1,3 +1,8 @@
+/**
+ * 当前开发项目的少量只读计时采样：记录请求耗时和页面/接口状态。
+ * 结果受本机网络影响，不代表压测、真实 4G 首屏/LCP 或持续 48 小时稳定性结论。
+ * 不修改数据、不发模型/短信，读取配置与报告均留在本机忽略文件。
+ */
 // Small read-only sample, not a load test or a 4G/LCP measurement.
 import fs from 'node:fs/promises'
 import assert from 'node:assert/strict'

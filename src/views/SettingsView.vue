@@ -1,4 +1,8 @@
 <script setup lang="ts">
+/**
+ * 可匿名阅读的连接说明、隐私入口和版本信息；登录后可退出及触发清理。
+ * 显示“配置已加载”只说明存在前端变量，不作为云端连接成功的证据。
+ */
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { signOut, session } from '../stores/auth'
@@ -11,6 +15,9 @@ const router = useRouter(),
   error = ref(''),
   busy = ref(false),
   status = ref('')
+/**
+ * 退出成功后跳转登录；失败保留当前页以显示错误。
+ */
 async function logout() {
   busy.value = true
   try {
@@ -22,6 +29,9 @@ async function logout() {
     busy.value = false
   }
 }
+/**
+ * 尽力请求处理本人清理队列；提示“已尝试”，不将请求完成等同于所有对象已删除。
+ */
 async function clean() {
   busy.value = true
   await cleanup()

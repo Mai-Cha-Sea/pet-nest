@@ -1,4 +1,8 @@
 <script setup lang="ts">
+/**
+ * 统一的业务图标别名与 Lucide 组件映射；页面用别名而非依赖图标库内部名字。
+ * 纯装饰图标隐藏于辅助技术，按钮的可访问名称应由调用页面提供。
+ */
 import {
   PawPrint,
   LayoutGrid,

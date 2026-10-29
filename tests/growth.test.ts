@@ -1,4 +1,8 @@
 // @vitest-environment jsdom
+/**
+ * 体重纯坐标函数及真实图表组件测试；读取边界模拟真实记录，不回退用档案体重补点。
+ * 检验少于 3 点、时间范围、请求竞态和数据表展示，不宣称真实浏览器视觉验收。
+ */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { weightPlot, weightPoints } from '../shared/growth'

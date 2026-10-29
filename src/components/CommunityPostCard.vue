@@ -1,4 +1,8 @@
 <script setup lang="ts">
+/**
+ * 动态卡片与详情共用展示、图片预览、点赞/收藏和本人删除。
+ * 成功互动后回查服务器计数并通知父组件，不用前端加减猜测最终统计。
+ */
 import { ref, watch } from 'vue'
 import type { CommunityPost } from '../../shared/community'
 import { communityStatus } from '../../shared/community'
@@ -18,6 +22,9 @@ const item = ref(props.post),
 const viewer = ref<HTMLDialogElement>(),
   viewerOpen = ref(false),
   selectedImage = ref(0)
+/**
+ * 用原生 dialog 预览选择的图片；图片 URL 的权限和续期由 MediaImage 管理。
+ */
 function openImage(index: number) {
   selectedImage.value = index
   viewerOpen.value = true
@@ -29,6 +36,9 @@ watch(
     item.value = value
   },
 )
+/**
+ * 防止连点，发送目标状态并回查计数；changed 让父组件同步卡片。
+ */
 async function interact(kind: 'like' | 'favorite') {
   if (busy.value) return
   busy.value = true
@@ -47,6 +57,9 @@ async function interact(kind: 'like' | 'favorite') {
     busy.value = false
   }
 }
+/**
+ * 确认后请求删除本人动态；服务器成功才通知父级移除卡片。
+ */
 async function remove() {
   if (busy.value) return
   busy.value = true

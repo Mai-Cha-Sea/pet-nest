@@ -1,3 +1,6 @@
+# 仅将已有 dist 静态文件打包为 Pages Direct Upload ZIP，不包含项目根目录或环境配置。
+# 验证单文件大小、允许扩展名、ZIP 根入口及正斜杠路径；此脚本不负责构建或远程发布。
+# 输出到被忽略的 artifacts/pages，并记录文件数及 SHA-256，供发布时核对。
 $ErrorActionPreference = 'Stop'
 $pagesRoot = Split-Path $PSScriptRoot -Parent
 $pagesBuild = Join-Path $pagesRoot 'dist'

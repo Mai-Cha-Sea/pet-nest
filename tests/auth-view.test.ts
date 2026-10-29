@@ -1,4 +1,8 @@
 // @vitest-environment jsdom
+/**
+ * 挂载真实注册/登录组件，模拟 SDK 响应并验证用户操作到提交参数。
+ * 包含 +86、短信输入、协议默认未同意与版本声明；不向邮箱/手机号实际投递。
+ */
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createRouter, createMemoryHistory } from 'vue-router'

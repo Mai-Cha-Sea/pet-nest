@@ -1,4 +1,8 @@
 <script setup lang="ts">
+/**
+ * 读取真实体重记录绘制 SVG；周/月/年范围映射见 shared/growth.ts。
+ * 至少 3 个有效点才显示曲线，达到读取上限时提示 limited，不使用档案体重补造数据点。
+ */
 import { computed, ref, watch, onUnmounted } from 'vue'
 import { getWeightRecords } from '../lib/api'
 import { growthDays, weightPlot, weightPoints, type GrowthPeriod } from '../../shared/growth'
@@ -20,6 +24,9 @@ const difference = computed(() =>
 const date = (time: number) =>
   new Date(time).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' })
 let version = 0
+/**
+ * 按宠物/时间范围读数据，用版本号丢弃过期结果；限定数据量时保留 limited 提示。
+ */
 async function load() {
   const current = ++version
   busy.value = true

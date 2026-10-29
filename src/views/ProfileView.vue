@@ -1,4 +1,8 @@
 <script setup lang="ts">
+/**
+ * 私人资料、头像、本人宠物和账号绑定入口，以及独立的社区统计。
+ * 私人表单与公开统计分别加载；统计失败不禁用私人资料编辑，也不以假零掩盖错误。
+ */
 import { ref, onMounted } from 'vue'
 import { getProfile, getPets, saveProfile, uploadAvatar, validateImage } from '../lib/api'
 import { configured } from '../lib/supabase'
@@ -22,6 +26,9 @@ const profile = ref<Profile>({ id: '', nickname: '', bio: '', avatar_path: null 
 const community = ref<CommunityPerson | null>(null),
   statsLoading = ref(configured),
   statsError = ref('')
+/**
+ * 独立加载获赞/关注/粉丝；null 表示未开通，异常单独提示并允许重试。
+ */
 async function loadStats() {
   if (!configured || !session.value) return
   statsLoading.value = true
@@ -34,6 +41,9 @@ async function loadStats() {
     statsLoading.value = false
   }
 }
+/**
+ * 读取私人资料和本人宠物；与社区统计分离，避免一个统计错误阻断表单。
+ */
 async function load() {
   if (!configured) return
   loading.value = true
@@ -49,6 +59,9 @@ async function load() {
 }
 onMounted(load)
 onMounted(loadStats)
+/**
+ * 校验待上传头像；此步骤不写入云端。
+ */
 async function choose(e: Event) {
   const f = (e.target as HTMLInputElement).files?.[0]
   if (f)
@@ -60,6 +73,9 @@ async function choose(e: Event) {
       file.value = undefined
     }
 }
+/**
+ * 先保存允许修改的资料字段，再更新头像；任何失败使用统一错误提示。
+ */
 async function save() {
   if (busy.value) return
   busy.value = true

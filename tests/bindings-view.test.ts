@@ -1,4 +1,8 @@
 // @vitest-environment jsdom
+/**
+ * 挂载真实账号绑定组件，模拟待确认/已确认/缺失 new_phone 的服务端快照。
+ * 验证输入可恢复、目标变化清旧验证码与失败提示；测试后释放组件和定时器。
+ */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import AccountBindings from '../src/components/AccountBindings.vue'

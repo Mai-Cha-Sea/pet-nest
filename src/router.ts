@@ -1,3 +1,8 @@
+/**
+ * 页面路由及登录入口保护；页面按需加载以减少首屏资源。
+ * public 只表示允许匿名进入页面，真实数据权限仍由 Auth、RLS 和服务端执行。
+ * 新增公开页面必须显式声明 meta.public，并补充 tests/router.test.ts。
+ */
 import { createRouter, createWebHistory } from 'vue-router'
 import { authPromise, session } from './stores/auth'
 import { configured } from './lib/supabase'
@@ -42,6 +47,7 @@ export const router = createRouter({
     },
   ],
 })
+// 等待启动时的会话恢复后再判断页面访问；redirect 由登录页限制为站内路径。
 router.beforeEach(async (to) => {
   await authPromise
   if (configured && !to.meta.public && !session.value)

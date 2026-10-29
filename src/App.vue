@@ -1,4 +1,8 @@
 <script setup lang="ts">
+/**
+ * 应用布局、桌面/手机导航及会话变化后的页面隔离。
+ * RouterView 按用户 ID 与路径重建，避免切换账号后复用上一账号的组件状态。
+ */
 import { computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Icon from './components/Icon.vue'
@@ -16,10 +20,16 @@ const active = computed(() =>
         ? 'profile'
         : 'pets',
 )
+/**
+ * 会话退出时离开受保护内容；登录后尽力处理本人的待清理图片队列。
+ */
 watch(session, (next, old) => {
   if (old && !next && route.path !== '/auth') router.replace('/auth')
   if (next) void cleanup()
 })
+/**
+ * 侧栏退出入口；发生错误转入设置页，让用户继续核对连接和账号状态。
+ */
 async function logout() {
   try {
     await signOut()

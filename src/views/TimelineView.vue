@@ -1,4 +1,8 @@
 <script setup lang="ts">
+/**
+ * 按本人宠物选择的时间轴入口，类型筛选和分页复用 RecordList。
+ * URL 的 pet 只是预选值，需与真实宠物列表核对后使用。
+ */
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { getPets } from '../lib/api'
@@ -11,6 +15,9 @@ const pets = ref<Pet[]>([]),
   petId = ref(String(useRoute().query.pet || '')),
   error = ref(''),
   busy = ref(false)
+/**
+ * 读取可访问宠物并校正 URL 选择；记录查询由 RecordList 按 petId 执行。
+ */
 async function load() {
   if (!configured) return
   busy.value = true

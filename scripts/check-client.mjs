@@ -1,3 +1,7 @@
+/**
+ * 生产构建后的静态产物检查：递归扫描 HTML/JS/CSS/map 中的服务端配置名与直连地址。
+ * 这只是泄漏防线之一，不等同于穷尽所有真实密钥；实际发布还需核对上传目录和凭据排除。
+ */
 import { readdir, readFile } from 'node:fs/promises'
 import assert from 'node:assert/strict'
 const forbidden = [
@@ -9,6 +13,9 @@ const forbidden = [
   'https://api.deepseek.com/chat/completions',
 ]
 let files = 0
+/**
+ * 递归读取允许扫描的构建文本；任何禁用标识命中都立即失败，不自动修剪或替换产物。
+ */
 async function check(dir) {
   for (const entry of await readdir(dir, { withFileTypes: true })) {
     const path = `${dir}/${entry.name}`

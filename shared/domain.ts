@@ -1,3 +1,8 @@
+/**
+ * 前端与 AI Edge 共用的 P0 类型及字段校验。
+ * 体重单位 kg，喂食量单位 g/ml；用药字段仅记录用户输入。
+ * 这里的校验用于请求边界，数据库仍独立执行约束，不能只靠界面验证。
+ */
 import { z } from 'zod'
 
 export const recordTypes = [
@@ -31,6 +36,9 @@ export const petSchema = z.object({
   remark: text(1000),
 })
 export const profileSchema = z.object({ nickname: text(64).min(1, '请填写昵称'), bio: text(128) })
+/**
+ * 校验 YYYY-MM-DD 日历日期、排除不存在的日期，并以北京时间判断是否晚于今天。
+ */
 export function validDate(v: string) {
   return (
     /^\d{4}-\d{2}-\d{2}$/.test(v) &&
@@ -51,6 +59,11 @@ export const contentSchemas = {
   medication: z.object({ name: text(100).min(1), dosage: text(100).min(1), note: text(500) }),
   incident: z.object({ description: text(2000).min(1) }),
 }
+/**
+ * 按六类记录 schema 校验内容、发生时间与图片数量；失败直接抛错。
+ * 时间最多容忍 60 秒时钟偏差；只有异常记录可关联图片，最多 9 张。
+ * 函数不返回清洗后的副本，持久化格式还受数据库约束。
+ */
 export function validateRecord(
   type: RecordType,
   content: unknown,
@@ -63,6 +76,9 @@ export function validateRecord(
   if (imageCount > 9 || imageCount < 0 || (type !== 'incident' && imageCount > 0))
     throw new Error('仅异常记录可上传图片，最多 9 张')
 }
+/**
+ * 严格限制 AI 请求字段，不接受浏览器额外传入 owner 或模型配置。
+ */
 export const aiRequestSchema = z
   .object({
     pet_id: z.uuid(),
@@ -105,6 +121,9 @@ export interface Conversation {
   content: string
   created_at: string
 }
+/**
+ * 将已校验的记录内容转为时间轴摘要；不解释症状或生成用药建议。
+ */
 export function recordSummary(record: Pick<PetRecord, 'type' | 'content'>) {
   const c = record.content
   switch (record.type) {

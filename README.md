@@ -2,7 +2,7 @@
 
 Vue 3 + TypeScript + Vite 前端，Supabase PostgreSQL/Auth/Storage，Edge Functions 调用 DeepSeek。依据原始 V3.0 文档实现 P0；用户已确认进入 P1，新增体重成长曲线、图文社区、点赞/评论/收藏及关注体系。未开发 P2。
 
-源码仓库：[Mai-Cha-Sea/pet-nest](https://github.com/Mai-Cha-Sea/pet-nest)（私有）。提交范围、克隆和后续更新见 [GitHub 说明](docs/GITHUB.md)。
+源码仓库：[Mai-Cha-Sea/pet-nest](https://github.com/Mai-Cha-Sea/pet-nest)（用户已手动设为公开）。提交范围、克隆和后续更新见 [GitHub 说明](docs/GITHUB.md)，敏感配置检查见 [密钥与提交安全记录](docs/SECRET-SAFETY.md)。
 
 **当前版本 0.2.0（P1），已发布至手机测试站点：[pet-nest-mobile.pages.dev](https://pet-nest-mobile.pages.dev)。** 2026-10-29 发布前完整检查中 150 项自动测试通过；线上 13 个页面入口及 28 个 JS/CSS 文件与构建一致，认证配置、后端 CORS、真实测试账号登录与社区/个人页读取通过。发布范围、包摘要和回退方法见 [P1 发布记录](docs/RELEASE-0.2.0.md)。先前完成的 26 组真实开发云端业务与 39 项响应式检查，以及协议/获赞 3 组云端和 15 项布局验证分别保留在 [101 项测试表](docs/TEST-MATRIX.md)、[首轮报告](docs/FULL-TEST-REPORT.md)及[修复记录](docs/GAP-FIXES.md)，不能据此宣称全部生产验收完成。用户选择本阶段仅用敏感词自动审核，图片不做语义识别，保留举报人工复审；详见 [P1 指南](docs/P1.md)和[审核操作说明](docs/MODERATION.md)。配置在被 Git 忽略的 `.env.local`，部署方式见 [Cloudflare Pages](docs/CLOUDFLARE-PAGES.md)，历史验收见[测试结果](docs/TEST-RESULTS.md)。
 
@@ -80,6 +80,9 @@ docs/             审查、数据结构、接口、部署、测试、阶段结�
 
 ## 文档
 
+- [开发接手指南、注释约定与维护清单](docs/HANDOVER.md)
+- [源码注释补充范围与验证记录](docs/SOURCE-COMMENTS.md)
+- [数据库最终函数定义、权限与回归索引](docs/DATABASE-FUNCTIONS.md)
 - [阶段 1 审查与实施计划](docs/01-audit.md)
 - [数据库与安全设计](docs/DATABASE.md)
 - [接口文档](docs/API.md)

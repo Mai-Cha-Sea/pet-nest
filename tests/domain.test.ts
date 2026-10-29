@@ -1,3 +1,7 @@
+/**
+ * P0 共享字段与记录校验的纯函数测试，涵盖单位、日期、图片限制和 AI 请求结构。
+ * 这里只验证应用边界，数据库约束的独立执行见 database.test.ts。
+ */
 import { describe, it, expect } from 'vitest'
 import {
   petSchema,

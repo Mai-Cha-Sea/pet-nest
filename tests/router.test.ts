@@ -1,4 +1,8 @@
 // @vitest-environment jsdom
+/**
+ * 路由守卫回归：匿名协议/设置可读，宠物、AI 和社区仍要求会话。
+ * 认证启动 Promise 与会话是隔离夹具，不执行真实登录或导航到外网。
+ */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 const auth = vi.hoisted(() => ({ session: { value: null as null | { user: { id: string } } } }))
 vi.mock('../src/stores/auth', () => ({

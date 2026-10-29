@@ -1,4 +1,8 @@
 // @vitest-environment jsdom
+/**
+ * 协议全文和两个主页获赞统计的真实组件回归，数据访问边界使用 mock。
+ * 统计值必须来自响应，错误不能伪装成 0；真实数据库计数/留存另由 SQL 与云端检查。
+ */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'

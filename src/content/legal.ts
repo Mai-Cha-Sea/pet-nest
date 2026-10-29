@@ -1,3 +1,8 @@
+/**
+ * 可匿名阅读的课设协议正文与服务提供方说明链接。
+ * 通过 Vue 文本插值渲染，正文不包含可执行 HTML。修改条款时同步 shared/legal.ts
+ * 及新迁移；维护主体和服务用途应按实际项目情况维护。
+ */
 import { PRIVACY_VERSION, TERMS_VERSION } from '../../shared/legal'
 
 export const legalDocuments = {

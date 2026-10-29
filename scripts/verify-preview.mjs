@@ -1,3 +1,7 @@
+/**
+ * 临时启动本项目的生产预览，检查 SPA 深层入口和主 JS；finally 关闭自己启动的进程。
+ * 只测本地 dist，不验证真实云端业务；strictPort 防止误测被其他进程占用的 4173 端口。
+ */
 import { spawn } from 'node:child_process'
 import { resolve } from 'node:path'
 import assert from 'node:assert/strict'

@@ -1,4 +1,8 @@
 <script setup lang="ts">
+/**
+ * 本人宠物首页，读取云端档案与私人昵称，不提供演示假数据回退。
+ * 出生日期仅估算月龄；领养日期显示事实日期，不冒充宠物年龄。
+ */
 import { ref, onMounted } from 'vue'
 import { getPets, getProfile } from '../lib/api'
 import { configured } from '../lib/supabase'
@@ -12,6 +16,9 @@ const pets = ref<Pet[]>([]),
   busy = ref(false),
   error = ref('')
 const name = ref('养宠的你')
+/**
+ * 并行读取本人宠物和私人昵称，错误交给统一提示，不回退为伪造成功数据。
+ */
 async function load() {
   if (!configured) return
   busy.value = true
@@ -27,6 +34,9 @@ async function load() {
   }
 }
 onMounted(load)
+/**
+ * 出生日期用平均月长估算展示月龄；没有日期或为领养日期时不推测年龄。
+ */
 function age(p: Pet) {
   if (!p.birth_date) return '年龄待记录'
   if (p.date_kind === 'adoption') return `领养于 ${p.birth_date}`

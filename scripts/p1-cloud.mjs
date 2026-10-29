@@ -1,3 +1,8 @@
+/**
+ * 仅针对指定开发项目和专用 A/B 的真实 P1 联调；显式开关后才写入。
+ * 临时动态/宠物/图片和本轮新增关注在 finally 清理，原有关注和已存在社区昵称不覆盖。
+ * 检查 RPC/RLS/Storage，不调用模型或短信；清理失败必须在报告中保留，不能算完整通过。
+ */
 // Run only against the explicitly selected development project and dedicated A/B accounts.
 import fs from 'node:fs/promises'
 import assert from 'node:assert/strict'

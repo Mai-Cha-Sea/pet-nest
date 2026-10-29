@@ -1,5 +1,7 @@
 # 数据库与安全设计
 
+接手时可先查 [数据库函数索引](DATABASE-FUNCTIONS.md)，定位每个 RPC/触发器的最终定义、权限边界和回归入口。已执行的迁移保持原样，注释补充记录见 [SOURCE-COMMENTS.md](SOURCE-COMMENTS.md)。
+
 迁移按文件名顺序执行，六份均已应用到 `pet-nest-dev` 开发项目。新增协议留存与获赞统计的迁移先经 PGlite 和 CLI dry-run，再应用到开发库。
 
 - `supabase/migrations/202610270001_p0.sql`：首次初始化结构，外层 `BEGIN/COMMIT` 确保失败回滚；不得对已有项目重复粘贴执行或随意重置。

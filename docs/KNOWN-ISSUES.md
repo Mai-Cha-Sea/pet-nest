@@ -30,7 +30,7 @@ AI 时间上下文已修正为显式北京时间并在开发函数真实复测�
 - 前端生产构建会报告 Zod 依赖中两个 PURE 注释位置警告，Rollup 移除注释后正常完成构建。未修改 node_modules 或忽略编译错误来掩盖问题。
 - 没有配置 ESLint；提供严格 TypeScript 检查与 Prettier 格式检查。GitHub Actions 工作流在源码推送后运行，实际结果以仓库 Actions 页面为准，不能用本地检查代替云端结果。
 - npm ci 在 Windows 必须先停止本项目的 Vite 预览，否则可能遇到 esbuild.exe 的 EPERM 文件占用；本次已修复并成功复现干净安装。另有 jsdom 间接依赖 whatwg-encoding 的弃用提示，当前测试通过。
-- 用户指定的私有源码仓库为 Mai-Cha-Sea/pet-nest；提交范围及后续更新步骤见 GITHUB.md。原始 Word 文档完整保留，真实配置和测试账号密码仅保留在本机。
+- 源码仓库为 Mai-Cha-Sea/pet-nest，用户已手动设为公开；提交范围及后续更新步骤见 GITHUB.md，敏感配置检查见 SECRET-SAFETY.md。原始 Word 文档完整保留，真实配置和测试账号密码不随仓库分发。
 - Supabase CLI 2.122.0 的短信 enable_confirmations 映射方向与字段描述不一致。当前文件使用 false 得到真实的 sms_autoconfirm=false，已通过云端校验；升级或换用其他版本前必须重新核对，不能仅根据变量名字改成 true。详见 SMS-SETUP.md。
 
 前端已有 Cloudflare Pages 手机测试站点，连接 Supabase 开发后端。2026-10-28 用户授权推进 P1，后续明确选择仅用敏感词自动检查，详见 P1.md、MODERATION.md。图文配文/标签通过后自动发布，没有图片画面或 OCR 审核；基础词库不能穷尽违规内容，仍保留举报复审，既有签名链接可能继续有效最多 5 分钟。真实手机及全部生产验收尚未完成，P2 未实现。

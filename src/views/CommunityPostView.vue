@@ -1,4 +1,9 @@
 <script setup lang="ts">
+/**
+ * 动态详情、评论/一级回复、本人删除、举报及旧 pending 主动重审。
+ * 评论正文按首次请求冻结，未知网络结果保留原 UUID；明确拒绝后允许用户纠正输入。
+ * 审核权限不在本页，管理员操作见 docs/MODERATION.md。
+ */
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import type { CommunityPost, CommunityComment } from '../../shared/community'
@@ -35,8 +40,14 @@ const post = ref<CommunityPost>(),
   removing = ref<CommunityComment>(),
   reporting = ref<{ post?: string; comment?: string }>(),
   reason = ref('')
+/**
+ * 同一次评论保留 UUID 与首次正文；未知响应时重试原内容，避免重复评论。
+ */
 let commentId = crypto.randomUUID(),
   commentAttempt: { body: string; parent?: string } | undefined
+/**
+ * 读取可见动态；只有已发布动态加载评论，草稿和历史待审不假装公开。
+ */
 async function load() {
   if (!configured) {
     loading.value = false
@@ -53,6 +64,9 @@ async function load() {
     loading.value = false
   }
 }
+/**
+ * 按 50 条分页读评论；发现原请求已成功保存时解锁并清空评论输入状态。
+ */
 async function loadComments(more = false) {
   commentsBusy.value = true
   commentsError.value = ''
@@ -67,6 +81,9 @@ async function loadComments(more = false) {
     commentsBusy.value = false
   }
 }
+/**
+ * 已确认保存后清空正文/回复目标并生成下次评论 ID；不能在未知失败时调用。
+ */
 function resetComment() {
   body.value = ''
   reply.value = undefined
@@ -74,6 +91,10 @@ function resetComment() {
   commentId = crypto.randomUUID()
 }
 onMounted(load)
+/**
+ * 首次请求冻结正文和回复目标；成功后回读评论及统计。
+ * 明确的词库/参数拒绝允许编辑，其他失败保留原请求用于幂等恢复。
+ */
 async function send() {
   if (busy.value) return
   busy.value = true
@@ -103,6 +124,9 @@ async function send() {
     busy.value = false
   }
 }
+/**
+ * 确认后删除本人评论并刷新列表/计数；一级评论的回复由数据库级联删除。
+ */
 async function removeComment() {
   if (!removing.value || busy.value) return
   busy.value = true
@@ -118,6 +142,9 @@ async function removeComment() {
     removing.value = undefined
   }
 }
+/**
+ * 提交当前选中目标的私有举报；不因举报立即隐藏或删除内容。
+ */
 async function report() {
   if (!reporting.value || busy.value) return
   busy.value = true
@@ -134,6 +161,9 @@ async function report() {
     busy.value = false
   }
 }
+/**
+ * 作者主动重新检查历史 pending 内容；拒绝重发已下架内容的规则在 RPC 中。
+ */
 async function resubmit() {
   if (!post.value || busy.value) return
   busy.value = true

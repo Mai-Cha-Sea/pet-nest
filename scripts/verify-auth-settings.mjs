@@ -1,3 +1,7 @@
+/**
+ * 只读核对云端邮箱/手机启用及自动确认设置，不发短信/邮件，不创建账号。
+ * 需要 .env.local 的公开项目 URL/key；失败直接退出，不自动降低验证要求。
+ */
 import assert from 'node:assert/strict'
 
 const url = process.env.VITE_SUPABASE_URL

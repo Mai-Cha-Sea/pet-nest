@@ -1,4 +1,8 @@
 <script setup lang="ts">
+/**
+ * 社区入口与显式公开昵称设置；不自动把私人昵称复制到社区。
+ * revision 通知信息流在修改昵称后重新读取；互动前的真实开通/权限检查仍在 RPC。
+ */
 import { ref, onMounted } from 'vue'
 import { getCommunityPerson, saveCommunityProfile } from '../lib/community'
 import type { CommunityPerson, FeedMode } from '../../shared/community'
@@ -16,6 +20,9 @@ const mode = ref<FeedMode>('recommend'),
   busy = ref(false),
   editing = ref(false),
   revision = ref(0)
+/**
+ * 读取当前用户的社区开通状态，未开通保持 null 并展示显式设置入口。
+ */
 async function load() {
   if (!configured) {
     loading.value = false
@@ -33,6 +40,9 @@ async function load() {
   }
 }
 onMounted(load)
+/**
+ * 保存公开昵称后回读状态并递增 revision，让现有卡片同步最新昵称。
+ */
 async function save() {
   if (busy.value) return
   busy.value = true

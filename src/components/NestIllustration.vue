@@ -1,3 +1,4 @@
+<!-- 纯装饰的小窝 SVG 插画，不承载业务数据；aria-hidden 避免辅助技术重复朗读装饰内容。 -->
 <template>
   <svg viewBox="0 0 400 240" fill="none" aria-hidden="true" class="nest-illustration">
     <circle cx="241" cy="116" r="98" fill="#E5EBD9" />

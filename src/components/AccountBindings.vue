@@ -1,4 +1,9 @@
 <script setup lang="ts">
+/**
+ * 个人中心的手机号 OTP 与邮箱链接确认交互。
+ * 已确认标识、待确认标识和用户正在编辑的值分开保存；重新聚焦时只核对状态，不自动重发。
+ * SDK 返回可能暂时缺少 new_phone，因此不能在一次刷新后清掉用户已收到验证码的目标。
+ */
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import type { User } from '@supabase/supabase-js'
 import {
@@ -36,6 +41,9 @@ const boundPhone = computed(() => {
     return ''
   }
 })
+/**
+ * 将合法中国大陆号码转为本地 11 位用于比较；旧国际号码或无效值返回空。
+ */
 function localPhone(value: string) {
   try {
     return chinaPhone(value).slice(3)
@@ -46,6 +54,10 @@ function localPhone(value: string) {
 const canVerifyPhone = computed(
   () => !!localPhone(phone.value) && /^\d{6}$/.test(code.value.trim()),
 )
+/**
+ * 合并 Auth 最新状态，保留用户输入与尚待验证的号码。
+ * 只有确认目标号码已绑定才清理验证码，不能把一次缺少 new_phone 的响应当作取消。
+ */
 function apply(user: User) {
   account.value = user
   const serverPending = localPhone(user.new_phone || '')
@@ -63,6 +75,9 @@ function apply(user: User) {
   pendingEmail.value = user.new_email || ''
   if (pendingEmail.value && !email.value) email.value = pendingEmail.value
 }
+/**
+ * 只读刷新账号；避免与发送/验证并发，用户切回邮箱确认页后可调用。
+ */
 async function load() {
   if (!configured || loading.value || busy.value) return
   loading.value = true
@@ -75,6 +90,9 @@ async function load() {
     loading.value = false
   }
 }
+/**
+ * 请求绑定短信并启动本地冷却；确认状态仍以 Auth 返回值及后续 OTP 为准。
+ */
 async function sendPhone() {
   if (busy.value || phoneCooldown.remaining.value) return
   busy.value = true
@@ -95,6 +113,9 @@ async function sendPhone() {
     busy.value = false
   }
 }
+/**
+ * 使用当前目标和验证码完成 phone_change，成功后才清空验证输入。
+ */
 async function verifyPhone() {
   if (busy.value || !canVerifyPhone.value) return
   busy.value = true
@@ -112,6 +133,9 @@ async function verifyPhone() {
     busy.value = false
   }
 }
+/**
+ * 提交待绑定邮箱并提示用户完成确认；请求被接受不等于已绑定。
+ */
 async function sendEmail() {
   if (busy.value || emailCooldown.remaining.value) return
   busy.value = true
@@ -134,6 +158,9 @@ async function sendEmail() {
     busy.value = false
   }
 }
+/**
+ * 浏览器从邮件确认返回时只刷新标识状态，不自动重发短信/邮件。
+ */
 function onFocus() {
   void load()
 }
@@ -143,6 +170,9 @@ onMounted(() => {
 })
 onBeforeUnmount(() => window.removeEventListener('focus', onFocus))
 watch([() => session.value?.user.email, () => session.value?.user.phone], onFocus)
+/**
+ * 用户改为另一号码时清除旧验证码和旧成功提示，防止验证目标与代码错配。
+ */
 watch(phone, (next, previous) => {
   if (localPhone(next) !== localPhone(previous)) code.value = ''
   if (pendingPhone.value && localPhone(next) !== pendingPhone.value) {

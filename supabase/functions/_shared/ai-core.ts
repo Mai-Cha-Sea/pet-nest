@@ -1,3 +1,8 @@
+/**
+ * AI 的纯上下文与输出规则，不读取环境变量、不访问数据库或调用模型。
+ * 仅向上游发送白名单宠物字段与有预算的文字摘要，不传对象路径/身份资料。
+ * 关键词急症与输出过滤是有限规则，服务端鉴权和数据库隔离仍独立执行。
+ */
 export const DISCLAIMER =
   '以上建议仅供参考，不构成诊疗意见。如症状持续或加重，请及时联系线下宠物医院。'
 export const EMERGENCY =
@@ -16,6 +21,10 @@ export interface ChatMessage {
   role: 'system' | 'user' | 'assistant'
   content: string
 }
+/**
+ * 仓库返回的事实资料：records 为近 30 天记录，history 为当前会话成功问答。
+ * 进入模型前还要经过 buildMessages 白名单、条数和字符预算限制。
+ */
 export interface ContextData {
   pet: {
     name: string
@@ -32,6 +41,11 @@ export interface ContextData {
   history: { role: 'user' | 'assistant'; content: string }[]
   recordsTruncated?: boolean
 }
+/**
+ * 构建完整 Chat 消息数组：系统规则、事实 JSON、最近最多 10 轮完整问答、当前问题。
+ * 记录最多 100 条、每条内容最多 600 字符，总内容预算 18000；超出时显式标注 truncated。
+ * 时间转换为显式 UTC+08:00，日历生日不转时区；图片只带数量而不带可访问路径。
+ */
 export function buildMessages(data: ContextData, question: string): ChatMessage[] {
   // Whitelist fields: no owner IDs, emails, signed URLs or storage paths leave our server.
   const { name, species, breed, gender, date_kind, birth_date, weight, sterilized, remark } =
@@ -91,11 +105,19 @@ export function buildMessages(data: ContextData, question: string): ChatMessage[
     { role: 'user', content: question },
   ]
 }
+/**
+ * 用有限中文关键词识别明显急症，返回 true 时直接走固定就医指引而不等模型。
+ * 未命中不能证明安全，通用提示和线下就医边界仍需保留。
+ */
 export function isEmergency(text: string) {
   return /大量出血|大出血|抽搐|误食.{0,8}(异物|毒|药|老鼠药|巧克力)|吞.{0,6}(针|电池|异物)|呼吸困难|无法呼吸|昏迷|没有呼吸/.test(
     text,
   )
 }
+/**
+ * 检查非空与长度，替换明显处方/剂量/确诊或活动内容，最后附加一次固定免责声明。
+ * 这是规则层校验，不是完整医学判断；界面仍应以普通文本展示结果。
+ */
 export function safeAnswer(raw: string) {
   let answer = raw.trim().replaceAll(DISCLAIMER, '').trim()
   if (!answer || answer.length > 10000) throw new Error('INVALID_RESPONSE')
@@ -113,12 +135,19 @@ export function safeAnswer(raw: string) {
     answer = '本次回答包含不适合展示的内容，请重新描述养护问题。'
   return `${answer}\n\n${DISCLAIMER}`
 }
+/**
+ * 读取上游合法的非负整数 token 统计；缺失/非法时返回 0，表示未获统计而非无费用。
+ */
 export function tokenUsage(data: unknown) {
   const usage = (data as { usage?: { prompt_tokens?: unknown; completion_tokens?: unknown } })
     ?.usage
   const tokens = (v: unknown) => (typeof v === 'number' && Number.isInteger(v) && v >= 0 ? v : 0)
   return { prompt: tokens(usage?.prompt_tokens), completion: tokens(usage?.completion_tokens) }
 }
+/**
+ * 只接受首个 choice 正常 stop 且 content 为字符串的完整回答，再执行输出检查。
+ * 截断或异常结构抛 INVALID_RESPONSE，不能把半条回答当作成功保存。
+ */
 export function parseCompletion(data: unknown) {
   const d = data as {
     choices?: { finish_reason?: string; message?: { content?: unknown } }[]

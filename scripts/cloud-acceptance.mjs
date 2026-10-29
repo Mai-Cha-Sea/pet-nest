@@ -1,3 +1,8 @@
+/**
+ * 开发云端高级验收，会使用受控管理权限并保留专用演示/QA 数据供核查。
+ * 需同时提供测试凭据及显式写入/管理开关；不能当作只读检查或临时账号自动清理工具。
+ * 云端写入、真实模型开关和数据保留范围见 docs/TESTING.md；禁止在生产库直接运行。
+ */
 // Explicitly opted-in acceptance checks for a disposable DEVELOPMENT project.
 // Requires .env.test.local plus a server-only TEST_ADMIN_KEY in the process env.
 import fs from 'node:fs/promises'

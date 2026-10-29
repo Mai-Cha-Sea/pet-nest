@@ -1,3 +1,7 @@
+/**
+ * Hook 验签、事件去重和 ACS3 官方固定向量回归；fetch 使用受控响应。
+ * 号码、OTP 与签名材料均为测试夹具，不投递真实短信、不使用生产 AccessKey。
+ */
 import { describe, expect, it, vi } from 'vitest'
 import { Webhook } from 'standardwebhooks'
 import { signAliyunQuery } from '../supabase/functions/_shared/aliyun-sms'

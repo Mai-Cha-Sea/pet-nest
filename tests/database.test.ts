@@ -1,9 +1,17 @@
+/**
+ * 使用 PGlite 执行全部真实迁移和权限/RPC SQL，再切换角色验证数据隔离。
+ * Auth/Storage 平台对象为测试夹具，不是完整 Supabase 服务；并发排队也不等于真实多连接压测。
+ */
 import { beforeAll, beforeEach, afterAll, describe, it, expect } from 'vitest'
 import { PGlite } from '@electric-sql/pglite'
 import { readFileSync, readdirSync } from 'node:fs'
 let db: PGlite
 const a = '11111111-1111-4111-8111-111111111111',
   b = '22222222-2222-4222-8222-222222222222'
+/**
+ * 在同一事务中使用测试选定的数据库角色与 JWT sub，验证实际 RLS。
+ * role 仅由本测试的常量传入，不是接受外部参数的通用 SQL 执行接口。
+ */
 async function as(user: string, sql: string, params: unknown[] = [], role = 'authenticated') {
   return db.transaction(async (tx) => {
     await tx.exec(`set local role ${role}`)

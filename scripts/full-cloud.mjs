@@ -1,3 +1,8 @@
+/**
+ * 26 组开发云端业务验收，测试账号由本轮管理接口创建，并据其真实返回 ID 限定清理范围。
+ * TEST_ALLOW_FULL_TESTS=yes 与进程内管理凭据缺一不可；真实模型另由 TEST_ENABLE_AI 控制。
+ * 会创建并删除临时账号/业务对象，不能在生产环境随意执行；原始敏感响应不写报告。
+ */
 // Explicit, bounded acceptance run for the named DEVELOPMENT project only.
 // Credentials stay in process memory. Every write is scoped to accounts created by this run.
 import fs from 'node:fs/promises'

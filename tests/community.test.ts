@@ -1,3 +1,7 @@
+/**
+ * 社区共享标签规则的纯函数回归：输入分隔、数量、去重、长度和控制字符。
+ * 敏感词最终检查位于 SQL，不由这些前端测试替代。
+ */
 import { describe, expect, it } from 'vitest'
 import { parseTags, tagsSchema } from '../shared/community'
 describe('community tag validation', () => {

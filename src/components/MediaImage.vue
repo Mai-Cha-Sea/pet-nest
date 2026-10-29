@@ -1,4 +1,8 @@
 <script setup lang="ts">
+/**
+ * 私有对象路径的短时签名图片，支持 pet-media/community-media。
+ * 签名有效 5 分钟，本组件每 4 分钟刷新；卸载释放定时器并使未完成响应失效。
+ */
 import { ref, watch, onUnmounted } from 'vue'
 import { signedImage } from '../lib/api'
 import Icon from './Icon.vue'
@@ -11,6 +15,9 @@ const props = defineProps<{
 const url = ref(''),
   failed = ref(false)
 let revision = 0
+/**
+ * 重新申请签名并只接受最新版本的响应；路径改变或卸载后旧签名不能覆盖新图片。
+ */
 async function refresh() {
   const version = ++revision
   if (!props.path) {

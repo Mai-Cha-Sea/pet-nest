@@ -1,3 +1,8 @@
+/**
+ * 真实开发项目的双账号基础联调，会创建宠物/记录/图片并在 finally 尝试清理本轮数据。
+ * 必须显式 TEST_ALLOW_WRITES=yes；只有 TEST_ENABLE_AI=yes 才发真实模型请求并可能消耗额度。
+ * 凭据由进程环境提供，不能用生产账号或把结果误当全部生产验收。
+ */
 import { createClient } from '@supabase/supabase-js'
 import assert from 'node:assert/strict'
 

@@ -1,3 +1,7 @@
+/**
+ * AI 纯规则及真实 Request/Response 编排测试；数据库仓库与外部 fetch 通过依赖注入控制。
+ * 覆盖鉴权、上下文、额度受理顺序、重试、超时/限流/保存失败；不调用真实模型。
+ */
 import { describe, it, expect, vi } from 'vitest'
 import { createAIHandler } from '../supabase/functions/_shared/ai-handler'
 import type { AIDeps, AIRepository } from '../supabase/functions/_shared/ai-handler'

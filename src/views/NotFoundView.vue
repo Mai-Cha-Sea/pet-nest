@@ -1,3 +1,4 @@
+<!-- 未知路由的静态空状态；返回宠物页后由统一路由守卫处理登录。 -->
 <template>
   <div class="empty">
     <span class="eyebrow">404 · LOST IN THE NEST</span>

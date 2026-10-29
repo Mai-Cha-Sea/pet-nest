@@ -1,4 +1,8 @@
 // @vitest-environment jsdom
+/**
+ * 账号绑定 API 边界回归：模拟 Auth，验证同账号复核、phone_change、待确认标识和失败行为。
+ * 不触达真实认证服务，不发验证码；不是实际收件或号码归属验收。
+ */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 const state = vi.hoisted(() => ({
   session: { value: { user: { id: 'owner-a' } } as Record<string, unknown> | null },

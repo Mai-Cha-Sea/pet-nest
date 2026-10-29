@@ -1,4 +1,8 @@
 <script setup lang="ts">
+/**
+ * 基于原生 dialog 的确认层，父组件通过挂载/卸载控制显示。
+ * confirm/cancel 只通知父组件；busy 阻止取消或重复确认；useId 为多实例生成独立无障碍标识。
+ */
 import { onMounted, ref, useId } from 'vue'
 defineProps<{ title: string; message: string; busy?: boolean; danger?: boolean }>()
 const emit = defineEmits<{ confirm: []; cancel: [] }>()

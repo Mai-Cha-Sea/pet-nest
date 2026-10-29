@@ -1,4 +1,8 @@
 <script setup lang="ts">
+/**
+ * 公开社区主页：动态、实际获赞、关注/粉丝及关注操作。
+ * 只使用 community_person/people 的公开字段，不查询目标用户的私有资料。
+ */
 import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { getCommunityPerson, getCommunityPeople, setCommunityInteraction } from '../lib/community'
@@ -19,6 +23,9 @@ const id = String(useRoute().params.id),
   busy = ref(false),
   error = ref('')
 let listVersion = 0
+/**
+ * 读取公开主页和实际统计；未开通社区资料统一提示 AUTHOR_NOT_FOUND。
+ */
 async function load() {
   if (!configured) {
     loading.value = false
@@ -36,6 +43,9 @@ async function load() {
   }
 }
 onMounted(load)
+/**
+ * 设置与当前显示相反的目标关注状态，成功后以服务器回读统计为准。
+ */
 async function follow() {
   if (!person.value || busy.value) return
   busy.value = true
@@ -49,6 +59,9 @@ async function follow() {
     busy.value = false
   }
 }
+/**
+ * 分页读当前关注/粉丝标签；listVersion 防止快速切换时旧响应写回。
+ */
 async function loadPeople(more = false) {
   const list = tab.value,
     version = ++listVersion

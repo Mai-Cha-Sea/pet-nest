@@ -1,4 +1,9 @@
 <script setup lang="ts">
+/**
+ * 邮箱/中国大陆手机号的注册与密码登录，以及手机注册验证码确认。
+ * 密码交给 Supabase Auth；注册先明确同意协议，提交版本声明。
+ * “恢复验证”只恢复输入步骤，不发送短信；注册验证与已登录账号改绑的 OTP 类型不同。
+ */
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { client, configured } from '../lib/supabase'
@@ -26,6 +31,9 @@ const router = useRouter(),
   error = ref(''),
   success = ref('')
 const resendCooldown = useCooldown()
+/**
+ * 切换登录/注册时清掉验证步骤和同意状态，避免旧流程被误继续。
+ */
 function switchMode(next: 'login' | 'register') {
   if (busy.value) return
   mode.value = next
@@ -35,6 +43,9 @@ function switchMode(next: 'login' | 'register') {
   error.value = ''
   success.value = ''
 }
+/**
+ * 切换标识类型时清理短信步骤；不自动向新号码发送请求。
+ */
 function switchLoginMethod(next: 'email' | 'phone') {
   if (busy.value) return
   loginMethod.value = next
@@ -43,11 +54,17 @@ function switchLoginMethod(next: 'email' | 'phone') {
   error.value = ''
   success.value = ''
 }
+/**
+ * 保存已验证会话并跳回站内地址；拒绝 // 开头的站外重定向。
+ */
 async function enter(sessionData: NonNullable<typeof session.value>) {
   session.value = sessionData
   const target = String(route.query.redirect || '/pets')
   await router.replace(target.startsWith('/') && !target.startsWith('//') ? target : '/pets')
 }
+/**
+ * 恢复已有手机验证码的输入步骤，不再注册/发短信；仍要求主动同意协议。
+ */
 function resumeRegistration() {
   if (busy.value) return
   error.value = ''
@@ -61,6 +78,9 @@ function resumeRegistration() {
     error.value = errorMessage(e)
   }
 }
+/**
+ * 使用注册类型 sms 确认收到的验证码；有真实 session 才进入应用。
+ */
 async function verifyRegistration() {
   if (busy.value || !pendingPhone.value) return
   busy.value = true
@@ -81,6 +101,9 @@ async function verifyRegistration() {
     busy.value = false
   }
 }
+/**
+ * 冷却结束后请求 Auth 重发注册短信，后端发送失败仍显示真实错误。
+ */
 async function resendRegistration() {
   if (busy.value || !pendingPhone.value || resendCooldown.remaining.value) return
   busy.value = true
@@ -97,6 +120,10 @@ async function resendRegistration() {
     busy.value = false
   }
 }
+/**
+ * 只提交一种登录标识；注册增加当前协议声明，密码由 Auth 处理。
+ * 注册无 session 时分别进入短信确认或邮件等待状态，不提前宣布已登录。
+ */
 async function submit() {
   if (busy.value) return
   busy.value = true

@@ -1,3 +1,7 @@
+/**
+ * 前端 Supabase 传输边界的受控回归，模拟返回行/错误及分页。
+ * 重点覆盖响应丢失后的幂等、图片引用核对和较长历史；真实 RLS 另由 SQL/云端测试验证。
+ */
 import { beforeEach, describe, it, expect, vi } from 'vitest'
 const state = vi.hoisted(() => ({
   responses: [] as { data: unknown; error: unknown }[],

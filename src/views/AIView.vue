@@ -1,4 +1,10 @@
 <script setup lang="ts">
+/**
+ * AI 对话页：所选宠物/会话、即时问答、云端历史、额度与失败恢复。
+ * messages/requests 是云端快照，liveTurns 暂存本页已发出的问答；按 request_id 合并。
+ * 任何轮询只读历史，不重新调用模型；同请求重试与新问题使用不同的 ID 策略。
+ * 关键回归在 tests/views.test.ts 和 tests/api.test.ts。
+ */
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { getPets, history, usage, askAI } from '../lib/api'
@@ -8,6 +14,9 @@ import type { Pet, Conversation } from '../../shared/domain'
 import Icon from '../components/Icon.vue'
 import Notice from '../components/Notice.vue'
 type Question = Parameters<typeof askAI>[0]
+/**
+ * 本页发送中的临时问答；已确认的 answer 即时展示，不等待下一次历史查询。
+ */
 interface LiveTurn {
   body: Question
   created_at: string
@@ -30,6 +39,10 @@ const route = useRoute(),
   retry = ref<Question>(),
   chat = ref<HTMLElement>(),
   historyOpen = ref(false)
+/**
+ * 合并当前会话的历史与即时消息，以 request_id:role 去重。
+ * 保留本地已确认答案，让暂时滞后的历史响应不会使回答消失。
+ */
 const visible = computed(() => {
     const result = messages.value.filter((m) => m.session_id === sessionId.value)
     const keys = new Set(result.map((m) => `${m.request_id}:${m.role}`))
@@ -52,6 +65,10 @@ const visible = computed(() => {
     return result
   }),
   pet = computed(() => pets.value.find((p) => p.id === petId.value))
+/**
+ * 服务端终态优先；本地已成功结果可以覆盖仍为 pending 的服务端快照。
+ * 其余情况保留服务端状态，用于历史列表及是否需要继续只读轮询。
+ */
 const requestRows = computed(() => {
   const rows = new Map(requests.value.map((r) => [r.id, r]))
   for (const turn of liveTurns.value) {
@@ -79,7 +96,14 @@ const sessions = computed(() => {
 const currentStatus = computed(
   () => requestRows.value.find((r) => r.session_id === sessionId.value)?.status,
 )
+/**
+ * 每次加载/切换宠物递增版本；只接收当前版本的异步结果。
+ */
 let generation = 0
+/**
+ * 刷新所选宠物的历史及今日额度。silent 用于后台同步，避免重置已展示回答。
+ * 请求失败仅显示提示，liveTurns 保留；旧版本响应不能写回新选择的页面状态。
+ */
 async function reload(silent = false) {
   if (!configured || !petId.value) return
   const version = ++generation
@@ -106,6 +130,9 @@ async function reload(silent = false) {
     if (version === generation) loading.value = false
   }
 }
+/**
+ * DOM 更新后滚动至最近消息；无 scrollTo 的测试环境采用 scrollTop 回退。
+ */
 function scroll() {
   if (!chat.value) return
   if (typeof chat.value.scrollTo === 'function')
@@ -113,6 +140,11 @@ function scroll() {
   else chat.value.scrollTop = chat.value.scrollHeight
 }
 watch([visible, busy], () => nextTick(scroll), { flush: 'post' })
+/**
+ * 已知 pending 且当前不在发送时，每 2 秒只读历史，最多检查 2 分钟。
+ * 切换状态/宠物/会话或组件卸载时停止后续调度；这不取消已受理的后端调用。
+ * 先前开始的 reload 仍受 generation 保护。
+ */
 watch([currentStatus, busy, petId, sessionId], ([status, sending], _old, onCleanup) => {
   if (status !== 'pending' || sending) return
   autoChecking.value = true
@@ -133,6 +165,9 @@ watch([currentStatus, busy, petId, sessionId], ([status, sending], _old, onClean
     clearTimeout(timer)
   })
 })
+/**
+ * 切换宠物先清除旧宠物的界面缓存并使旧加载失效，避免混入其他宠物数据。
+ */
 watch(petId, () => {
   generation++
   sessionId.value = crypto.randomUUID()
@@ -157,6 +192,9 @@ onMounted(async () => {
     loading.value = false
   }
 })
+/**
+ * 创建本页新的会话 UUID；服务端在首个问题被受理时才建立该会话。
+ */
 function newSession() {
   sessionId.value = crypto.randomUUID()
   question.value = ''
@@ -164,6 +202,9 @@ function newSession() {
   error.value = ''
   historyOpen.value = false
 }
+/**
+ * 切换到已有会话，不重新请求模型；可见消息从本宠物历史中筛选。
+ */
 function chooseSession(id: string) {
   sessionId.value = id
   error.value = ''
@@ -172,12 +213,20 @@ function chooseSession(id: string) {
   historyOpen.value = false
   nextTick(scroll)
 }
+/**
+ * 把失败问题放回输入框并放弃原重试标识；下次提交视为新问题，可能再次占次。
+ */
 function editRetry() {
   if (!retry.value || busy.value) return
   question.value = retry.value.question
   retry.value = undefined
   error.value = ''
 }
+/**
+ * 发送新问题，或在 same=true 时复用 retry 的完整请求以查询/重试同一操作。
+ * busy 防止连点；当天额度只是 UI 提示，最终由服务端事务裁决。
+ * 成功立即保存 answer 到 liveTurns，后台刷新历史；不确定失败时保留原 request_id。
+ */
 async function send(same = false) {
   if (busy.value || !petId.value || (!same && (!!retry.value || used.value >= 20))) return
   const body =

@@ -1,4 +1,8 @@
 <script setup lang="ts">
+/**
+ * 共用的创建/编辑表单；编辑需确认，头像上传在档案写入成功后进行。
+ * createId 维持新增重试幂等，savedId 避免头像失败后重复创建宠物。
+ */
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getPet, savePet, uploadAvatar, validateImage } from '../lib/api'
@@ -30,7 +34,13 @@ const form = reactive<PetInput>({
   sterilized: false,
   remark: '',
 })
+/**
+ * 在页面创建时固定新增 UUID，网络重试不能生成第二个宠物 ID。
+ */
 const createId = crypto.randomUUID()
+/**
+ * 编辑模式回填真实档案；读取失败用 loadFailed 阻止把空表单覆盖原数据。
+ */
 async function load() {
   if (!id.value || !configured) return
   loading.value = true
@@ -46,6 +56,9 @@ async function load() {
   }
 }
 onMounted(load)
+/**
+ * 预检单张头像文件，非法选择清除待上传文件并提示。
+ */
 async function choose(e: Event) {
   error.value = ''
   const f = (e.target as HTMLInputElement).files?.[0]
@@ -58,6 +71,9 @@ async function choose(e: Event) {
     file.value = undefined
   }
 }
+/**
+ * 先校验输入；已有档案需确认，新建直接进入提交。
+ */
 function requestSave() {
   try {
     petSchema.parse(form)
@@ -67,6 +83,9 @@ function requestSave() {
     error.value = errorMessage(e)
   }
 }
+/**
+ * 保存档案后再上传头像。savedId 表示档案已持久化，之后重试只更新该档案。
+ */
 async function submit() {
   if (busy.value) return
   busy.value = true

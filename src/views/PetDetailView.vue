@@ -1,4 +1,8 @@
 <script setup lang="ts">
+/**
+ * 单宠物档案及关联记录/成长图；删除前显示关联清理影响并二次确认。
+ * 记录删除通过 revision 刷新成长图，权限与级联操作由数据库执行。
+ */
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getPet, removePet } from '../lib/api'
@@ -19,6 +23,9 @@ const route = useRoute(),
   busy = ref(false),
   confirm = ref(false),
   deleting = ref(false)
+/**
+ * 从 RLS 保护的数据接口读取路由所指档案；无权访问与不存在不泄露区别。
+ */
 async function load() {
   if (!configured) return
   busy.value = true
@@ -32,6 +39,9 @@ async function load() {
   }
 }
 onMounted(load)
+/**
+ * 确认弹窗触发后的删除步骤；成功返回列表，失败关闭确认层并展示原因。
+ */
 async function remove() {
   if (!pet.value) return
   deleting.value = true

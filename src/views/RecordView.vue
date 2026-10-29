@@ -1,4 +1,8 @@
 <script setup lang="ts">
+/**
+ * 六类日常记录表单；文字记录先保存，异常图片随后上传关联。
+ * saved/partial 保留部分成功结果，图片失败重试不能再插入一条文字记录。
+ */
 import { ref, reactive, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getPets, addRecord, attachRecordImages, validateImage } from '../lib/api'
@@ -23,9 +27,15 @@ const route = useRoute(),
   files = ref<File[]>([]),
   saved = ref<PetRecord>(),
   partial = ref(false)
+/**
+ * datetime-local 使用本地墙钟时间；提交时再转 ISO，不能直接把 UTC 字符串填入控件。
+ */
 const now = new Date()
 now.setMinutes(now.getMinutes() - now.getTimezoneOffset())
 const occurred = ref(now.toISOString().slice(0, 16))
+/**
+ * 固定本条记录的幂等键；文字保存与图片重试共享 saved 状态。
+ */
 const createId = crypto.randomUUID()
 const form = reactive({
   food: '',
@@ -38,6 +48,9 @@ const form = reactive({
   description: '',
   note: '',
 })
+/**
+ * 加载本人宠物并核对 URL 预选值，无有效选择时使用列表首项。
+ */
 async function load() {
   if (!configured) return
   loading.value = true
@@ -51,6 +64,9 @@ async function load() {
   }
 }
 onMounted(load)
+/**
+ * 检查最多 9 张异常图片；任一文件失败则清空本次选择。
+ */
 async function choose(e: Event) {
   error.value = ''
   const list = Array.from((e.target as HTMLInputElement).files || [])
@@ -63,6 +79,9 @@ async function choose(e: Event) {
     files.value = []
   }
 }
+/**
+ * 按所选类型只组装对应字段；用药剂量是用户原始记录，不在此生成建议。
+ */
 function content(): Record<string, unknown> {
   switch (type.value) {
     case 'feeding':
@@ -79,6 +98,10 @@ function content(): Record<string, unknown> {
       return { description: form.description }
   }
 }
+/**
+ * 本地时间转 ISO 后验证，先保存文字再关联异常图片。
+ * 部分成功保留 saved，使重试只完成图片步骤，并明确提示文字记录已存在。
+ */
 async function submit() {
   if (busy.value) return
   busy.value = true
