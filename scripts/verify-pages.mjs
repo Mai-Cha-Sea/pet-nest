@@ -104,7 +104,7 @@ try {
   console.log(
     JSON.stringify({
       origin,
-      pages: 5,
+      pages: checks.filter((check) => check.name === 'page').length,
       assets: names.length,
       backendOrigins: 2,
       matchedLocalBuild: true,
