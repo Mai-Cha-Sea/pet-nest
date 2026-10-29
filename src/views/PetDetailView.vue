@@ -10,6 +10,8 @@ import Notice from '../components/Notice.vue'
 import MediaImage from '../components/MediaImage.vue'
 import RecordList from '../components/RecordList.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
+import WeightChart from '../components/WeightChart.vue'
+const recordRevision = ref(0)
 const route = useRoute(),
   router = useRouter(),
   pet = ref<Pet>(),
@@ -74,6 +76,7 @@ async function remove() {
         </div>
       </div>
     </section>
+    <WeightChart :pet-id="pet.id" :revision="recordRevision" />
     <div class="section-heading detail-heading">
       <h2>日常时间轴</h2>
       <div class="row wrap">
@@ -84,7 +87,7 @@ async function remove() {
         >
       </div>
     </div>
-    <section class="panel"><RecordList :pet-id="pet.id" /></section>
+    <section class="panel"><RecordList :pet-id="pet.id" @changed="recordRevision++" /></section>
     <ConfirmDialog
       v-if="confirm"
       title="确定删除这个小窝？"

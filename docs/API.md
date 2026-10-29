@@ -1,8 +1,30 @@
 # 接口约定
 
-业务 CRUD 使用 Supabase 官方 Auth / REST / Storage 协议，不包装成一套自定义 HTTP 格式。前端调用集中在 `src/lib/api.ts`。所有操作都要求当前用户的 access token，并由数据库 RLS 兜底。
+业务 CRUD 使用 Supabase 官方 Auth / REST / Storage 协议，不包装成一套自定义 HTTP 格式。P0 调用集中在 `src/lib/api.ts`，P1 社区调用集中在 `src/lib/community.ts`。所有操作都要求当前用户的 access token，并由数据库 RLS 兜底。
+
+## P1 接口
+
+| 接口                                                | 约定                                                                                     |
+| --------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| getWeightRecords                                    | records 按本人 pet_id/type/date 查询，500 条分页，最多最新 2000 条并返回 limited         |
+| community_set_profile(p_nickname)                   | 显式开通/修改社区昵称，1–32 字                                                           |
+| community_create_post(p_id,p_body,p_pet,p_tags)     | 同 UUID/内容/标签幂等；1–1000 字、本人宠物，最多 3 个标签且每个 ≤20 字；保留旧三参数接口 |
+| community_publish(p_post,p_images)                  | 服务端检查词库及最多 9 张对象路径后自动发布；旧 pending 仅作者主动重审，无批量公开       |
+| community_feed(p_mode,p_offset,p_author?,p_post?)   | recommend/following/favorites/mine，每页 20；RLS 限制可见内容                            |
+| community_person / community_people                 | 独立社区昵称、关注状态及计数，关注/粉丝列表每页 20                                       |
+| community_interact(p_target,p_kind,p_enabled)       | like/favorite/follow，明确设定状态，重复请求不反转                                       |
+| community_add_comment(p_id,p_post,p_body,p_parent?) | 1–500 字、同请求幂等，仅同帖的一级评论可被回复                                           |
+| community_delete_post / community_delete_comment    | 仅本人；删除动态级联互动和图片队列，删除父评论级联回复                                   |
+| community_report(p_id,p_reason,p_post?,p_comment?)  | 必须选择一种目标，1–200 字，本人/目标去重，报告私有                                      |
+| community_review(p_post,p_approve,p_note)           | service_role/管理员专用，不能由普通客户端调用                                            |
+
+RPC 沿用 Supabase `{data,error}`，不额外包装；参数类型及错误映射见 shared/community.ts、src/lib/errors.ts。写入从 JWT 取 owner，服务器强制敏感词检查、配额、归属及幂等。审核流程和已知边界见 P1.md。
 
 ## Auth 与业务 CRUD
+
+注册页 `/auth` 提供可匿名阅读的 `/terms`、`/privacy` 链接，默认不勾选同意。新页面在 signUp 的 `options.data.legal_consent` 提交 `accepted:true`、`terms_version`、`privacy_version`；Auth 创建用户触发器将有效版本声明和服务器时间留存到 users。用户不能修改三个留存字段。旧客户端/管理接口缺少该声明时不补造记录，也不以该字段决定身份权限；记录的是提交的同意声明，不是阅读证明。版本常量在 shared/legal.ts，正文在 src/content/legal.ts。
+
+`community_person(p_user)` 现在额外返回 `like_received_count`。它等于目标用户当前已发布动态的点赞行总数，重复点赞不重复累加，取消点赞、删除/下架动态后重新读取即更新；主个人页与社区主页使用同一字段。查询继续受 RLS 保护，不公开用户的私有档案或注册同意记录。
 
 | 前端方法                                   | Supabase 接口 / 数据表                               | 行为                                                                  |
 | ------------------------------------------ | ---------------------------------------------------- | --------------------------------------------------------------------- |
@@ -88,4 +110,4 @@ SDK 返回 `{ data, error }`；调用层检查 error、抛给页面，统一转�
 
 健康规则与固定免责声明在 `ai-core.ts`。系统规则不混入用户资料；上下文作为标注为不可信的数据消息。服务端过滤明显诊断、处方和剂量输出，前端用文本插值渲染，绝不 v-html。急症关键词直接返回线下就医提示。
 
-资料输入会传给 DeepSeek，界面有明确说明；用户身份 ID、邮箱、对象路径与签名 URL 不会发送给模型。
+资料输入会传给 DeepSeek，界面有明确说明；用户身份 ID、邮箱、对象路径与签名 URL 不会发送给模型。记录的 occurred_at 在模型上下文中统一为带 `+08:00` 的北京时间，显式声明 `time_zone=Asia/Shanghai`；出生/领养日期保持日历日期，不转换时区，避免回答把凌晨记录写成前一天。

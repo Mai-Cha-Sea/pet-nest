@@ -16,21 +16,28 @@ Deno.serve(async (request: Request) => {
   if (!token) return json(401, { error: { code: 'UNAUTHORIZED' } })
   const { data: auth, error: authError } = await db.auth.getUser(token)
   if (authError || !auth.user) return json(401, { error: { code: 'UNAUTHORIZED' } })
-  const { data, error } = await db
-    .from('storage_cleanup')
-    .select('path')
-    .eq('user_id', auth.user.id)
-    .limit(100)
-  if (error) return json(503, { error: { code: 'DATABASE_UNAVAILABLE' } })
-  if (!data?.length) return json(200, { removed: 0 })
-  const paths = data.map((row) => row.path)
-  const { error: removeError } = await db.storage.from('pet-media').remove(paths)
-  if (removeError) return json(503, { error: { code: 'STORAGE_UNAVAILABLE' } })
-  const { error: queueError } = await db
-    .from('storage_cleanup')
-    .delete()
-    .eq('user_id', auth.user.id)
-    .in('path', paths)
-  if (queueError) return json(503, { error: { code: 'DATABASE_UNAVAILABLE' } })
-  return json(200, { removed: paths.length })
+  let removed = 0
+  for (const [table, bucket] of [
+    ['storage_cleanup', 'pet-media'],
+    ['community_media_cleanup', 'community-media'],
+  ]) {
+    const { data, error } = await db
+      .from(table)
+      .select('path')
+      .eq('user_id', auth.user.id)
+      .limit(100)
+    if (error) return json(503, { error: { code: 'DATABASE_UNAVAILABLE' } })
+    if (!data?.length) continue
+    const paths = data.map((row) => row.path)
+    const { error: removeError } = await db.storage.from(bucket).remove(paths)
+    if (removeError) return json(503, { error: { code: 'STORAGE_UNAVAILABLE' } })
+    const { error: queueError } = await db
+      .from(table)
+      .delete()
+      .eq('user_id', auth.user.id)
+      .in('path', paths)
+    if (queueError) return json(503, { error: { code: 'DATABASE_UNAVAILABLE' } })
+    removed += paths.length
+  }
+  return json(200, { removed })
 })

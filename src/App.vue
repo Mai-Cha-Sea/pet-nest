@@ -10,9 +10,11 @@ const route = useRoute(),
 const active = computed(() =>
   route.path.startsWith('/ai')
     ? 'ai'
-    : /^\/(profile|settings)/.test(route.path)
-      ? 'profile'
-      : 'pets',
+    : route.path.startsWith('/community')
+      ? 'community'
+      : /^\/(profile|settings)/.test(route.path)
+        ? 'profile'
+        : 'pets',
 )
 watch(session, (next, old) => {
   if (old && !next && route.path !== '/auth') router.replace('/auth')
@@ -44,6 +46,8 @@ async function logout() {
             :size="15" /></RouterLink
         ><RouterLink to="/ai" :class="{ selected: active === 'ai' }"
           ><Icon name="ai" />AI 健康助手<span class="nav-badge">AI</span></RouterLink
+        ><RouterLink to="/community" :class="{ selected: active === 'community' }"
+          ><Icon name="community" />宠友社区</RouterLink
         ><RouterLink to="/profile" :class="{ selected: active === 'profile' }"
           ><Icon name="user" />个人主页</RouterLink
         >
@@ -66,7 +70,13 @@ async function logout() {
       <header class="topbar">
         <div class="breadcrumb">
           <span>我的小窝</span><Icon name="right" :size="14" /><strong>{{
-            active === 'ai' ? 'AI 健康助手' : active === 'profile' ? '个人中心' : '宠物与日常'
+            active === 'ai'
+              ? 'AI 健康助手'
+              : active === 'community'
+                ? '宠友社区'
+                : active === 'profile'
+                  ? '个人中心'
+                  : '宠物与日常'
           }}</strong>
         </div>
         <div class="row">
@@ -97,6 +107,8 @@ async function logout() {
         ><Icon name="paw" />宠物</RouterLink
       ><RouterLink to="/ai" :class="{ selected: active === 'ai' }"
         ><Icon name="ai" />AI 助手</RouterLink
+      ><RouterLink to="/community" :class="{ selected: active === 'community' }"
+        ><Icon name="community" />社区</RouterLink
       ><RouterLink to="/profile" :class="{ selected: active === 'profile' }"
         ><Icon name="user" />我的</RouterLink
       >

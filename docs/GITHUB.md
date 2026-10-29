@@ -2,6 +2,10 @@
 
 仓库：https://github.com/Mai-Cha-Sea/pet-nest 。用户指定创建的私有仓库，保存项目源码、数据库迁移、占位环境示例、测试及开发文档。公开手机测试网站仍为 https://pet-nest-mobile.pages.dev 。
 
+## P1 版本更新
+
+2026-10-29 的版本为 **0.2.0**，P1 功能、协议/获赞修正、完整测试表与审核操作说明统一归档；[PR #1](https://github.com/Mai-Cha-Sea/pet-nest/pull/1) 保留变更记录，版本标签为 `v0.2.0`。本地与线上发布检查见 [RELEASE-0.2.0.md](RELEASE-0.2.0.md)。本次使用已授权的官方 GitHub CLI，经逐次凭据助手普通推送，没有 force push 或修改全局 Git 设置。
+
 ## 提交范围
 
 提交 Vue 前端、共享验证、Supabase 函数/迁移、自动测试、锁文件、README 与项目文档，包括保留的原始 Word 文档和测试截图。`.gitattributes` 统一文本换行并将图片/Word 标为二进制，减少跨系统的格式差异。

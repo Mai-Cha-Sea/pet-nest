@@ -15,7 +15,21 @@ async function get(path) {
 try {
   const expectedHtml = await fs.readFile('dist/index.html')
   const pages = await Promise.allSettled(
-    ['/', '/auth', '/pets/new', '/profile', '/ai'].map(async (path) => {
+    [
+      '/',
+      '/auth',
+      '/pets/new',
+      '/profile',
+      '/ai',
+      '/settings',
+      '/timeline',
+      '/community',
+      '/community/new',
+      '/terms',
+      '/privacy',
+      '/community/posts/00000000-0000-4000-8000-000000000000',
+      '/community/people/00000000-0000-4000-8000-000000000000',
+    ].map(async (path) => {
       const response = await get(path)
       const data = Buffer.from(await response.arrayBuffer())
       assert.equal(response.status, 200, path)
@@ -90,7 +104,7 @@ try {
   console.log(
     JSON.stringify({
       origin,
-      pages: 5,
+      pages: checks.filter((check) => check.name === 'page').length,
       assets: names.length,
       backendOrigins: 2,
       matchedLocalBuild: true,

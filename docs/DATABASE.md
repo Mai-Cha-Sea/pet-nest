@@ -1,10 +1,13 @@
 # 数据库与安全设计
 
-迁移按文件名顺序执行，三份均已应用到 `pet-nest-dev` 开发项目，且 CLI 迁移历史与本地一致。
+迁移按文件名顺序执行，六份均已应用到 `pet-nest-dev` 开发项目。新增协议留存与获赞统计的迁移先经 PGlite 和 CLI dry-run，再应用到开发库。
 
 - `supabase/migrations/202610270001_p0.sql`：首次初始化结构，外层 `BEGIN/COMMIT` 确保失败回滚；不得对已有项目重复粘贴执行或随意重置。
 - `supabase/migrations/20261027150205_harden_auto_rls_permissions.sql`：收紧平台自动创建的 `public.rls_auto_enable()` 的 EXECUTE 权限，移除 anon/authenticated/PUBLIC 调用权，保留数据库事件触发器行为。用 CLI `migration new` 生成，已通过 dry-run 后部署。
 - `supabase/migrations/20261028035619_sms_hook_delivery_log.sql`：短信回调去重状态表，不保存手机号、验证码或密钥。事件唯一键防重复发送；仅 service_role 可读写。
+- `supabase/migrations/20261028134826_p1_community.sql`：P1 独立社区资料、动态、评论、点赞、收藏、关注、举报与图片队列；包含 RLS、写入 RPC、审核与频控，未放宽 P0 私有表。详情见 P1.md。
+- `supabase/migrations/20261028151228_keyword_moderation_tags.sql`：用户选择的词库自动发布、归一化与扩充规则、最多 3 个标签。旧 pending 由作者主动重审，不批量公开，管理员下架权限保留。原创建 RPC 仍兼容旧客户端，见 MODERATION.md。
+- `supabase/migrations/20261029035042_registration_agreements_and_received_likes.sql`：users 新增 terms_version、privacy_version、legal_accepted_at；有效的新注册声明由创建用户触发器按服务器时间留存，普通用户不能修改。旧账号或旧客户端缺少声明时保持 NULL，不伪造补签，不把声明用于鉴权。community_person 增加 like_received_count，实时合计当前 published 动态的点赞，沿用 RLS/security invoker 和已有索引。
 
 PGlite 回归测试顺序执行全部迁移，包含短信表的权限测试。原 8 张业务表和新增 sms_deliveries 均启用 RLS；普通用户不能执行 AI 额度/完成 RPC 或读写短信状态，只有服务端角色可执行。
 
@@ -35,7 +38,7 @@ erDiagram
 | storage_cleanup  | path、user_id、created_at                                                                                   | 删除/替换已关联图片时自动入队；不能直接删 storage.objects 代替删除实际文件   |
 | sms_deliveries   | event_id、status、provider_code、created_at、finished_at                                                    | Auth HTTP Hook 的事件级去重和发送状态；不关联尚未提交的注册用户              |
 
-所有业务核心表有创建/更新时间戳；计数和清理表保留与其用途相关的时间戳。没有为 P1 建立社区表。
+所有业务核心表有创建/更新时间戳；计数和清理表保留与其用途相关的时间戳。P1 的 8 张 public 社区表均开启 RLS，另外 2 张内部规则/计数表位于受限 community_private schema；原有私有资料策略保持不变。
 
 ## 六类 content 结构
 

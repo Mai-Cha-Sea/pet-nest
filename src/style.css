@@ -2065,6 +2065,63 @@ label > small {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+.agreement-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 16px 0;
+  font-size: 12px;
+  line-height: 1.8;
+}
+.agreement-consent input {
+  width: 16px;
+  height: 16px;
+  min-height: 16px;
+  padding: 0;
+  margin: 3px 0 0;
+  flex: 0 0 16px;
+  accent-color: var(--green);
+}
+.agreement-consent a,
+.legal-links a,
+.legal-document a {
+  color: var(--green);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.legal-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin: 16px 0;
+  font-size: 12px;
+}
+.legal-document {
+  max-width: 850px;
+  margin: 0 auto;
+  padding: clamp(20px, 4vw, 42px);
+  line-height: 1.9;
+  overflow-wrap: anywhere;
+}
+.legal-document h1 {
+  font-size: 30px;
+}
+.legal-document h2 {
+  font-size: 19px;
+  margin-top: 28px;
+}
+.legal-document p {
+  margin: 14px 0;
+}
+.legal-document .eyebrow {
+  display: block;
+  margin-top: 18px;
+}
+.legal-document .legal-links {
+  justify-content: flex-start;
+  font-size: 14px;
+}
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

@@ -58,7 +58,479 @@ beforeEach(async () => {
 afterAll(async () => {
   await db?.close()
 })
+
+describe('P1 community migration, RPC permissions and privacy', () => {
+  const profile = (u = a) => as(u, "select public.community_set_profile('测试作者')")
+  it('counts likes across published posts and reflects unlike, takedown and deletion', async () => {
+    const first = await post(),
+      second = await post()
+    await profile(b)
+    for (const [user, target] of [
+      [a, first],
+      [b, first],
+      [b, second],
+    ])
+      await as(user!, "select public.community_interact($1,'like',true)", [target])
+    const total = async () =>
+      (await as(b, 'select public.community_person($1) as person', [a])).rows[0] as {
+        person: { like_received_count: number }
+      }
+    expect((await total()).person.like_received_count).toBe(3)
+    await as(b, "select public.community_interact($1,'like',true)", [second])
+    expect((await total()).person.like_received_count).toBe(3)
+    await as(b, "select public.community_interact($1,'like',false)", [first])
+    expect((await total()).person.like_received_count).toBe(2)
+    await as(a, "select public.community_review($1,false,'测试下架')", [second], 'service_role')
+    expect((await total()).person.like_received_count).toBe(1)
+    await as(a, 'select public.community_delete_post($1)', [first])
+    expect((await total()).person.like_received_count).toBe(0)
+  })
+  it('validates tags on the server, includes them in feeds, and keeps legacy clients compatible', async () => {
+    await profile()
+    const id = crypto.randomUUID()
+    await as(a, "select public.community_create_post($1,'标签测试',null,$2)", [
+      id,
+      ['猫咪日常', '晒太阳'],
+    ])
+    await as(a, "select public.community_create_post($1,'标签测试',null,$2)", [
+      id,
+      ['猫咪日常', '晒太阳'],
+    ])
+    await expect(
+      as(a, "select public.community_create_post($1,'标签测试',null,$2)", [id, ['换标签']]),
+    ).rejects.toThrow(/IDEMPOTENCY_CONFLICT/)
+    for (const tags of [['a', 'b', 'c', 'd'], ['重复', '重复'], ['x'.repeat(21)], [null]]) {
+      await expect(
+        as(a, "select public.community_create_post($1,'非法标签',null,$2)", [
+          crypto.randomUUID(),
+          tags,
+        ]),
+      ).rejects.toThrow(/INVALID_TAGS/)
+    }
+    await expect(
+      as(a, "select public.community_create_post($1,'正常配文',null,$2)", [
+        crypto.randomUUID(),
+        ['裸 聊'],
+      ]),
+    ).rejects.toThrow(/CONTENT_BLOCKED/)
+    await as(a, "select public.community_publish($1,'{}')", [id])
+    const rows = (await as(b, 'select public.community_feed(p_post:=$1) as item', [id])).rows as {
+      item: { tags: string[] }
+    }[]
+    expect(rows[0]!.item.tags).toEqual(['猫咪日常', '晒太阳'])
+    await expect(
+      as(
+        '',
+        "select public.community_create_post($1,'匿名',null,'{}')",
+        [crypto.randomUUID()],
+        'anon',
+      ),
+    ).rejects.toThrow(/permission denied/)
+  })
+  it('normalizes zero-width and fullwidth characters without allowing clients to edit moderation rules', async () => {
+    await profile()
+    for (const text of ['裸\u200b聊', '裸\ufe0f聊', '出 售，毒药', '刷单返佣']) {
+      await expect(
+        as(a, 'select public.community_create_post($1,$2)', [crypto.randomUUID(), text]),
+      ).rejects.toThrow(/CONTENT_BLOCKED/)
+    }
+    await db.exec("insert into community_private.blocked_words values('spamword')")
+    try {
+      await expect(
+        as(a, 'select public.community_create_post($1,$2)', [
+          crypto.randomUUID(),
+          'ｓｐａｍｗｏｒｄ',
+        ]),
+      ).rejects.toThrow(/CONTENT_BLOCKED/)
+    } finally {
+      await db.exec("delete from community_private.blocked_words where word='spamword'")
+    }
+    await expect(
+      as(a, "insert into community_private.blocked_words values('安全')"),
+    ).rejects.toThrow(/permission denied/)
+    await expect(
+      db.exec("insert into community_private.blocked_words values('---')"),
+    ).rejects.toThrow(/check constraint/)
+  })
+  it('retains old pending privacy and rejects attempts to republish a moderator-rejected post', async () => {
+    const id = await post(a, '旧版待审测试', false)
+    await as(
+      a,
+      "update public.community_posts set status='pending' where id=$1",
+      [id],
+      'service_role',
+    )
+    expect(
+      (await as(b, 'select * from public.community_posts where id=$1', [id])).rows,
+    ).toHaveLength(0)
+    await expect(as(b, "select public.community_publish($1,'{}')", [id])).rejects.toThrow(
+      /POST_NOT_FOUND/,
+    )
+    await as(a, "select public.community_publish($1,'{}')", [id])
+    expect(
+      (await as(b, 'select * from public.community_posts where id=$1', [id])).rows,
+    ).toHaveLength(1)
+    await as(a, "select public.community_review($1,false,'人工复核下架')", [id], 'service_role')
+    await expect(as(a, "select public.community_publish($1,'{}')", [id])).rejects.toThrow(
+      /POST_ALREADY_SUBMITTED/,
+    )
+  })
+  async function post(u = a, body = '今天天气不错，和毛孩子晒太阳', publish = true) {
+    const id = crypto.randomUUID()
+    await profile(u)
+    await as(u, 'select public.community_create_post($1,$2)', [id, body])
+    if (publish) await as(u, "select public.community_publish($1,'{}')", [id])
+    return id
+  }
+  it('requires explicit community membership and never exposes personal Auth/profile/pet data', async () => {
+    const p = await post()
+    expect(
+      (await as(b, 'select * from public.community_posts where id=$1', [p])).rows,
+    ).toHaveLength(1)
+    expect((await as(b, 'select * from public.users where id=$1', [a])).rows).toHaveLength(0)
+    expect((await as(b, 'select public.community_person($1) as result', [a])).rows[0]).toEqual({
+      result: {
+        user_id: a,
+        nickname: '测试作者',
+        following_count: 0,
+        follower_count: 0,
+        like_received_count: 0,
+        is_following: false,
+      },
+    })
+    await expect(as('', 'select * from public.community_posts', [], 'anon')).rejects.toThrow(
+      /permission denied/,
+    )
+    await expect(as('', 'select public.community_feed()', [], 'anon')).rejects.toThrow(
+      /permission denied/,
+    )
+    await expect(
+      as(b, "select public.community_create_post($1,'test')", [crypto.randomUUID()]),
+    ).rejects.toThrow(/COMMUNITY_PROFILE_REQUIRED/)
+  })
+  it('blocks direct writes, forged owners and ordinary moderator access', async () => {
+    const id = await post()
+    for (const sql of [
+      "update public.community_posts set status='published'",
+      'delete from public.community_posts',
+      'insert into public.community_likes(user_id,post_id) values($1,$2)',
+    ]) {
+      await expect(as(b, sql, sql.includes('$1') ? [a, id] : [])).rejects.toThrow(
+        /permission denied/,
+      )
+    }
+    await expect(as(b, 'select public.community_delete_post($1)', [id])).rejects.toThrow(
+      /POST_NOT_FOUND/,
+    )
+    await expect(as(a, "select public.community_review($1,true,'approved')", [id])).rejects.toThrow(
+      /permission denied/,
+    )
+    await expect(as(a, 'select * from community_private.blocked_words')).rejects.toThrow(
+      /permission denied/,
+    )
+  })
+  it('keeps drafts private, checks pet ownership, and returns only an explicitly selected pet name', async () => {
+    const p = (await pet()).rows[0] as { id: string }
+    const id = await post(a, '草稿', false)
+    expect((await as(b, 'select * from public.community_posts')).rows).toHaveLength(0)
+    await profile(b)
+    await expect(
+      as(b, "select public.community_create_post($1,'越权',$2)", [crypto.randomUUID(), p.id]),
+    ).rejects.toThrow(/PET_NOT_FOUND/)
+    const chosen = crypto.randomUUID()
+    await as(a, "select public.community_create_post($1,'一起生活',$2)", [chosen, p.id])
+    expect(
+      (await as(a, 'select pet_label from public.community_posts where id=$1', [chosen])).rows,
+    ).toEqual([{ pet_label: '团子' }])
+    await expect(as(b, "select public.community_publish($1,'{}')", [id])).rejects.toThrow(
+      /POST_NOT_FOUND/,
+    )
+  })
+  it('checks text on the server, including spaced words, nickname and comments', async () => {
+    await expect(as(a, "select public.community_set_profile('裸 聊')")).rejects.toThrow(
+      /CONTENT_BLOCKED/,
+    )
+    const id = await post()
+    await expect(
+      as(a, "select public.community_create_post($1,'出售 毒药')", [crypto.randomUUID()]),
+    ).rejects.toThrow(/CONTENT_BLOCKED/)
+    await expect(
+      as(a, "select public.community_add_comment($1,$2,'赌博推广')", [crypto.randomUUID(), id]),
+    ).rejects.toThrow(/CONTENT_BLOCKED/)
+    await expect(
+      as(a, 'select public.community_add_comment($1,$2,$3)', [
+        crypto.randomUUID(),
+        id,
+        'x'.repeat(501),
+      ]),
+    ).rejects.toThrow(/INVALID_COMMENT/)
+  })
+  it('auto-publishes valid image posts after text checks and still permits service-only takedown', async () => {
+    const id = await post(a, '图文', false),
+      path = `${a}/posts/${id}/${crypto.randomUUID()}.png`
+    await as(a, "insert into storage.objects(bucket_id,name) values('community-media',$1)", [path])
+    expect(
+      (await as(b, "select * from storage.objects where bucket_id='community-media'")).rows,
+    ).toHaveLength(0)
+    const published = await as(a, 'select public.community_publish($1,$2) as status', [id, [path]])
+    expect(published.rows).toEqual([{ status: 'published' }])
+    expect(
+      (await as(b, 'select * from public.community_posts where id=$1', [id])).rows,
+    ).toHaveLength(1)
+    expect(
+      (await as(b, "select * from storage.objects where bucket_id='community-media'")).rows,
+    ).toHaveLength(1)
+    await as(a, "select public.community_review($1,true,'人工检查通过')", [id], 'service_role')
+    expect(
+      (await as(b, 'select * from public.community_posts where id=$1', [id])).rows,
+    ).toHaveLength(1)
+    expect(
+      (await as(b, "select * from storage.objects where bucket_id='community-media'")).rows,
+    ).toHaveLength(1)
+    await as(a, "select public.community_review($1,false,'图片内容需调整')", [id], 'service_role')
+    expect(
+      (await as(b, "select * from storage.objects where bucket_id='community-media'")).rows,
+    ).toHaveLength(0)
+    await expect(
+      as(a, "insert into storage.objects(bucket_id,name) values('community-media',$1)", [
+        `${a}/posts/${id}/new.png`,
+      ]),
+    ).rejects.toThrow(/row-level security/)
+  })
+  it('rejects foreign, duplicate, non-existent or excessive image paths', async () => {
+    const id = await post(a, '图片校验', false)
+    for (const images of [
+      [`${b}/posts/${id}/a.png`],
+      [`${a}/posts/${id}/a.png`],
+      Array.from({ length: 10 }, () => `${a}/posts/${id}/a.png`),
+    ]) {
+      await expect(as(a, 'select public.community_publish($1,$2)', [id, images])).rejects.toThrow(
+        /INVALID_IMAGE/,
+      )
+    }
+  })
+  it('uses set-to-state interactions so duplicate retries cannot double count or cancel likes', async () => {
+    const id = await post()
+    await profile(b)
+    for (let i = 0; i < 3; i++)
+      await as(b, "select public.community_interact($1,'like',true)", [id])
+    await as(b, "select public.community_interact($1,'favorite',true)", [id])
+    await as(b, "select public.community_interact($1,'follow',true)", [a])
+    const feed = (await as(b, "select public.community_feed('following') as item")).rows as {
+      item: { like_count: number; liked: boolean; favorited: boolean }
+    }[]
+    expect(feed[0]!.item).toMatchObject({ like_count: 1, liked: true, favorited: true })
+    expect((await as(a, 'select * from public.community_favorites')).rows).toHaveLength(0)
+    await as(b, "select public.community_interact($1,'like',false)", [id])
+    expect((await as(a, 'select * from public.community_likes')).rows).toHaveLength(0)
+    await expect(as(b, "select public.community_interact($1,'follow',true)", [b])).rejects.toThrow(
+      /SELF_FOLLOW/,
+    )
+    expect(
+      (await as(a, "select public.community_people($1,'followers') as item", [a])).rows,
+    ).toHaveLength(1)
+  })
+  it('checks same-post replies, one nesting level and idempotent comment IDs', async () => {
+    const id = await post(),
+      other = await post(b),
+      comment = crypto.randomUUID(),
+      reply = crypto.randomUUID()
+    await as(a, "select public.community_add_comment($1,$2,'你好')", [comment, id])
+    await as(a, "select public.community_add_comment($1,$2,'你好')", [comment, id])
+    await as(b, "select public.community_add_comment($1,$2,'谢谢',$3)", [reply, id, comment])
+    await expect(
+      as(b, "select public.community_add_comment($1,$2,'跨帖回复',$3)", [
+        crypto.randomUUID(),
+        other,
+        comment,
+      ]),
+    ).rejects.toThrow(/INVALID_REPLY/)
+    await expect(
+      as(b, "select public.community_add_comment($1,$2,'二级回复',$3)", [
+        crypto.randomUUID(),
+        id,
+        reply,
+      ]),
+    ).rejects.toThrow(/INVALID_REPLY/)
+    await expect(as(b, 'select public.community_delete_comment($1)', [comment])).rejects.toThrow(
+      /COMMENT_NOT_FOUND/,
+    )
+    await as(a, 'select public.community_delete_comment($1)', [comment])
+    expect((await as(b, 'select * from public.community_comments')).rows).toHaveLength(0)
+  })
+  it('lets administrators look up a reported comment and dismiss reports without deleting content', async () => {
+    const id = await post(),
+      comment = crypto.randomUUID(),
+      reply = crypto.randomUUID()
+    await profile(b)
+    await as(a, "select public.community_add_comment($1,$2,'待复核正文')", [comment, id])
+    await as(b, "select public.community_add_comment($1,$2,'保留的回复',$3)", [reply, id, comment])
+    await as(b, "select public.community_report($1,'测试举报',null,$2)", [
+      crypto.randomUUID(),
+      comment,
+    ])
+    const lookup = await db.query(
+      `select c.id,c.body,p.nickname as author_nickname,
+      (select count(*)::integer from public.community_comments r where r.parent_id=c.id) as reply_count
+      from public.community_comments c left join public.community_profiles p on p.user_id=c.user_id
+      where c.id=$1`,
+      [comment],
+    )
+    expect(lookup.rows).toEqual([
+      { id: comment, body: '待复核正文', author_nickname: '测试作者', reply_count: 1 },
+    ])
+    await expect(
+      as(b, "update public.community_reports set status='dismissed' where comment_id=$1", [
+        comment,
+      ]),
+    ).rejects.toThrow(/permission denied/)
+    const changed = await db.query(
+      "update public.community_reports set status='dismissed' where comment_id=$1 and status='open' returning status",
+      [comment],
+    )
+    expect(changed.rows).toEqual([{ status: 'dismissed' }])
+    expect(
+      (await db.query('select id from public.community_comments where post_id=$1', [id])).rows,
+    ).toHaveLength(2)
+    expect(
+      (
+        await db.query(
+          "update public.community_reports set status='dismissed' where comment_id=$1 and status='open' returning id",
+          [comment],
+        )
+      ).rows,
+    ).toHaveLength(0)
+  })
+  it('guards manual comment deletion by ID and body and cascades both replies and their reports', async () => {
+    const id = await post(),
+      comment = crypto.randomUUID(),
+      reply = crypto.randomUUID()
+    await profile(b)
+    await as(a, "select public.community_add_comment($1,$2,'已复核正文')", [comment, id])
+    await as(b, "select public.community_add_comment($1,$2,'关联回复',$3)", [reply, id, comment])
+    await as(b, "select public.community_report($1,'父评论举报',null,$2)", [
+      crypto.randomUUID(),
+      comment,
+    ])
+    await as(a, "select public.community_report($1,'回复举报',null,$2)", [
+      crypto.randomUUID(),
+      reply,
+    ])
+    expect(
+      (
+        await db.query(
+          "delete from public.community_comments where id=$1 and body='过期正文' returning id",
+          [comment],
+        )
+      ).rows,
+    ).toHaveLength(0)
+    expect((await db.query('select id from public.community_reports')).rows).toHaveLength(2)
+    expect(
+      (
+        await db.query(
+          "delete from public.community_comments where id=$1 and body='已复核正文' returning id",
+          [comment],
+        )
+      ).rows,
+    ).toEqual([{ id: comment }])
+    expect(
+      (await db.query('select id from public.community_comments where post_id=$1', [id])).rows,
+    ).toHaveLength(0)
+    expect((await db.query('select id from public.community_reports')).rows).toHaveLength(0)
+    expect(
+      (await db.query('select id from public.community_posts where id=$1', [id])).rows,
+    ).toHaveLength(1)
+  })
+  it('stores deduplicated private reports and enforces the daily post limit', async () => {
+    const id = await post()
+    await profile(b)
+    await as(b, "select public.community_report($1,'垃圾内容',$2)", [crypto.randomUUID(), id])
+    await as(b, "select public.community_report($1,'重复举报',$2)", [crypto.randomUUID(), id])
+    expect((await as(b, 'select * from public.community_reports')).rows).toHaveLength(1)
+    expect((await as(a, 'select * from public.community_reports')).rows).toHaveLength(0)
+    for (let i = 1; i < 20; i++)
+      await as(a, "select public.community_create_post($1,'限额测试')", [crypto.randomUUID()])
+    await expect(
+      as(a, "select public.community_create_post($1,'第21条')", [crypto.randomUUID()]),
+    ).rejects.toThrow(/COMMUNITY_RATE_LIMIT/)
+  })
+  it('cascades interactions on post deletion and durably queues image cleanup', async () => {
+    const id = await post(a, '删除测试', false),
+      path = `${a}/posts/${id}/a.png`
+    await as(a, "insert into storage.objects(bucket_id,name) values('community-media',$1)", [path])
+    await as(a, 'select public.community_publish($1,$2)', [id, [path]])
+    await as(a, "select public.community_review($1,true,'')", [id], 'service_role')
+    await profile(b)
+    await as(b, "select public.community_interact($1,'like',true)", [id])
+    await as(a, 'select public.community_delete_post($1)', [id])
+    expect((await as(b, 'select * from public.community_likes')).rows).toHaveLength(0)
+    expect((await as(a, 'select path from public.community_media_cleanup')).rows).toEqual([
+      { path },
+    ])
+    expect((await as(b, 'select * from public.community_media_cleanup')).rows).toHaveLength(0)
+    await as(a, "delete from storage.objects where bucket_id='community-media' and name=$1", [path])
+    expect(
+      (await as(a, "select * from storage.objects where bucket_id='community-media'")).rows,
+    ).toHaveLength(0)
+  })
+})
 describe('P0 migration and actual PostgreSQL RLS (PGlite)', () => {
+  it('records a valid registration declaration at server time and prevents owner mutation', async () => {
+    const id = crypto.randomUUID()
+    const metadata = {
+      nickname: '同意测试',
+      legal_consent: {
+        accepted: true,
+        terms_version: '2026-10-29',
+        privacy_version: '2026-10-29',
+        accepted_at: '2000-01-01',
+      },
+    }
+    await db.query('insert into auth.users(id,raw_user_meta_data) values($1,$2)', [id, metadata])
+    const row = (
+      await as(
+        id,
+        'select terms_version,privacy_version,legal_accepted_at from public.users where id=$1',
+        [id],
+      )
+    ).rows[0] as { terms_version: string; privacy_version: string; legal_accepted_at: string }
+    expect(row.terms_version).toBe('2026-10-29')
+    expect(row.privacy_version).toBe('2026-10-29')
+    expect(new Date(row.legal_accepted_at).getUTCFullYear()).toBe(new Date().getUTCFullYear())
+    await expect(
+      as(id, "update public.users set legal_accepted_at='2000-01-01' where id=$1", [id]),
+    ).rejects.toThrow(/permission denied/)
+    await db.query("update auth.users set raw_user_meta_data='{}'::jsonb where id=$1", [id])
+    expect(
+      (await as(id, 'select terms_version from public.users where id=$1', [id])).rows[0],
+    ).toEqual({ terms_version: '2026-10-29' })
+    expect((await as(b, 'select id from public.users where id=$1', [id])).rows).toHaveLength(0)
+  })
+  it('never fabricates consent for old accounts, false declarations or wrong document versions', async () => {
+    expect(
+      (
+        await as(
+          a,
+          'select terms_version,privacy_version,legal_accepted_at from public.users where id=$1',
+          [a],
+        )
+      ).rows[0],
+    ).toEqual({ terms_version: null, privacy_version: null, legal_accepted_at: null })
+    for (const consent of [
+      { accepted: false, terms_version: '2026-10-29', privacy_version: '2026-10-29' },
+      { accepted: 'true', terms_version: '2026-10-29', privacy_version: '2026-10-29' },
+      { accepted: true, terms_version: 'old', privacy_version: '2026-10-29' },
+    ]) {
+      const id = crypto.randomUUID()
+      await db.query('insert into auth.users(id,raw_user_meta_data) values($1,$2)', [
+        id,
+        { legal_consent: consent },
+      ])
+      expect(
+        (await as(id, 'select legal_accepted_at from public.users where id=$1', [id])).rows[0],
+      ).toEqual({ legal_accepted_at: null })
+    }
+  })
   it('keeps SMS callback idempotency records private and unique, without storing OTPs or phones', async () => {
     const id = crypto.randomUUID()
     await expect(as(a, 'select * from public.sms_deliveries')).rejects.toThrow(/permission denied/)

@@ -28,6 +28,9 @@ import {
   LoaderCircle,
   Leaf,
   CalendarDays,
+  UsersRound,
+  MessageCircle,
+  Bookmark,
 } from 'lucide-vue-next'
 defineProps<{ name: string; size?: number }>()
 const icons: Record<string, typeof PawPrint> = {
@@ -59,6 +62,9 @@ const icons: Record<string, typeof PawPrint> = {
   loading: LoaderCircle,
   leaf: Leaf,
   calendar: CalendarDays,
+  community: UsersRound,
+  comment: MessageCircle,
+  bookmark: Bookmark,
 }
 </script>
 <template>

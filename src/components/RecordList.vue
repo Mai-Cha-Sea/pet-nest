@@ -9,6 +9,7 @@ import Notice from './Notice.vue'
 import MediaImage from './MediaImage.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
 const props = defineProps<{ petId: string }>()
+const emit = defineEmits<{ changed: [] }>()
 const filter = ref<RecordType | ''>(''),
   records = ref<PetRecord[]>([]),
   busy = ref(false),
@@ -50,6 +51,7 @@ async function confirmDelete() {
   deletingBusy.value = true
   try {
     await removeRecord(deleting.value.id)
+    emit('changed')
     deleting.value = null
     await load()
   } catch (e) {

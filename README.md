@@ -1,10 +1,10 @@
 # 宠物小窝 · Pet Nest
 
-Vue 3 + TypeScript + Vite 前端，Supabase PostgreSQL/Auth/Storage，Edge Functions 调用 DeepSeek。依据工作区原始《宠物小窝 Web 应用项目开发文档 V3.0》实现 P0，未开发 P1/P2。
+Vue 3 + TypeScript + Vite 前端，Supabase PostgreSQL/Auth/Storage，Edge Functions 调用 DeepSeek。依据原始 V3.0 文档实现 P0；用户已确认进入 P1，新增体重成长曲线、图文社区、点赞/评论/收藏及关注体系。未开发 P2。
 
 源码仓库：[Mai-Cha-Sea/pet-nest](https://github.com/Mai-Cha-Sea/pet-nest)（私有）。提交范围、克隆和后续更新见 [GitHub 说明](docs/GITHUB.md)。
 
-**手机测试站点已发布：[pet-nest-mobile.pages.dev](https://pet-nest-mobile.pages.dev)。** 前端托管于 Cloudflare Pages，连接现有 Supabase 开发项目，使用原有账号和云端数据。真实双账号、私有图片、DeepSeek 问答和并发限额验收通过，104 项本地自动测试通过；用户已反馈验证码输入修复后的测试通过。前端公开配置保存在被 Git 忽略的 `.env.local`。未开发 P1/P2。部署方式与后续更新见 [Cloudflare Pages](docs/CLOUDFLARE-PAGES.md)，证据和验证边界见 [测试结果](docs/TEST-RESULTS.md)。
+**当前版本 0.2.0（P1），已发布至手机测试站点：[pet-nest-mobile.pages.dev](https://pet-nest-mobile.pages.dev)。** 2026-10-29 发布前完整检查中 150 项自动测试通过；线上 13 个页面入口及 28 个 JS/CSS 文件与构建一致，认证配置、后端 CORS、真实测试账号登录与社区/个人页读取通过。发布范围、包摘要和回退方法见 [P1 发布记录](docs/RELEASE-0.2.0.md)。先前完成的 26 组真实开发云端业务与 39 项响应式检查，以及协议/获赞 3 组云端和 15 项布局验证分别保留在 [101 项测试表](docs/TEST-MATRIX.md)、[首轮报告](docs/FULL-TEST-REPORT.md)及[修复记录](docs/GAP-FIXES.md)，不能据此宣称全部生产验收完成。用户选择本阶段仅用敏感词自动审核，图片不做语义识别，保留举报人工复审；详见 [P1 指南](docs/P1.md)和[审核操作说明](docs/MODERATION.md)。配置在被 Git 忽略的 `.env.local`，部署方式见 [Cloudflare Pages](docs/CLOUDFLARE-PAGES.md)，历史验收见[测试结果](docs/TEST-RESULTS.md)。
 
 ## 先在本机打开
 
@@ -18,7 +18,7 @@ npm.cmd run dev
 打开命令输出的本地地址（默认 [http://127.0.0.1:5173](http://127.0.0.1:5173)）。当前机器已经配置开发后端；两个专用测试账号的邮箱、手机号与密码见本机 `测试账号.local.md`，自动化配置保留在 `.env.test.local`，两者均被 Git 忽略，不随仓库分发。它们的演示档案明确标注为测试数据。换电脑时需重新填写公开连接配置，未配置时界面会提示。
 
 ```powershell
-npm.cmd run check          # 前端类型 + 三个 Edge 类型 + 104 项本地测试 + 构建
+npm.cmd run check          # 前端类型 + 三个 Edge 类型 + 150 项本地测试 + 构建
 npm.cmd run format:check   # 源码格式检查
 npm.cmd run test:database  # 全部迁移在 PostgreSQL WASM 引擎执行及 RLS 测试
 npm.cmd run check:auth     # 联网核对云端邮箱/手机均要求真实验证，不发送验证码

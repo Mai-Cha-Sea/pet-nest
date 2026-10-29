@@ -6,6 +6,18 @@ export const router = createRouter({
   routes: [
     { path: '/', redirect: '/pets' },
     { path: '/auth', component: () => import('./views/AuthView.vue'), meta: { public: true } },
+    {
+      path: '/terms',
+      component: () => import('./views/LegalView.vue'),
+      props: { kind: 'terms' },
+      meta: { public: true },
+    },
+    {
+      path: '/privacy',
+      component: () => import('./views/LegalView.vue'),
+      props: { kind: 'privacy' },
+      meta: { public: true },
+    },
     { path: '/pets', component: () => import('./views/PetsView.vue') },
     { path: '/pets/new', component: () => import('./views/PetEditView.vue') },
     { path: '/pets/:id', component: () => import('./views/PetDetailView.vue') },
@@ -13,8 +25,16 @@ export const router = createRouter({
     { path: '/records/new', component: () => import('./views/RecordView.vue') },
     { path: '/timeline', component: () => import('./views/TimelineView.vue') },
     { path: '/ai', component: () => import('./views/AIView.vue') },
+    { path: '/community', component: () => import('./views/CommunityView.vue') },
+    { path: '/community/new', component: () => import('./views/CommunityComposeView.vue') },
+    { path: '/community/posts/:id', component: () => import('./views/CommunityPostView.vue') },
+    { path: '/community/people/:id', component: () => import('./views/CommunityPersonView.vue') },
     { path: '/profile', component: () => import('./views/ProfileView.vue') },
-    { path: '/settings', component: () => import('./views/SettingsView.vue') },
+    {
+      path: '/settings',
+      component: () => import('./views/SettingsView.vue'),
+      meta: { public: true },
+    },
     {
       path: '/:pathMatch(.*)*',
       component: () => import('./views/NotFoundView.vue'),

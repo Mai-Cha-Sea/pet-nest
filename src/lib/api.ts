@@ -61,6 +61,28 @@ export async function getRecords(petId: string, type?: RecordType, from = 0) {
   if (error) throw error
   return data as PetRecord[]
 }
+export async function getWeightRecords(petId: string, days: number) {
+  const since = new Date(Date.now() - days * 86400000).toISOString()
+  const records: PetRecord[] = []
+  let anchor: string | undefined
+  for (let from = 0; from < 2000; from += 500) {
+    let query = client()
+      .from('records')
+      .select('*')
+      .eq('pet_id', petId)
+      .eq('type', 'weight')
+      .gte('occurred_at', since)
+      .order('occurred_at', { ascending: false })
+      .order('id', { ascending: false })
+    if (anchor) query = query.lte('occurred_at', anchor)
+    const { data, error } = await query.range(from, from + 499)
+    if (error) throw error
+    if (!anchor && data.length) anchor = data[0].occurred_at
+    records.push(...(data as PetRecord[]))
+    if (data.length < 500) return { records, limited: false }
+  }
+  return { records, limited: true }
+}
 export async function addRecord(
   petId: string,
   type: RecordType,
@@ -191,8 +213,11 @@ export async function attachRecordImages(record: PetRecord, files: File[]) {
     throw e
   }
 }
-export async function signedImage(path: string) {
-  const { data, error } = await client().storage.from('pet-media').createSignedUrl(path, 300)
+export async function signedImage(
+  path: string,
+  bucket: 'pet-media' | 'community-media' = 'pet-media',
+) {
+  const { data, error } = await client().storage.from(bucket).createSignedUrl(path, 300)
   if (error) throw error
   return data.signedUrl
 }

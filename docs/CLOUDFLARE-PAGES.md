@@ -1,5 +1,13 @@
 # Cloudflare Pages 手机测试站点
 
+## 当前发布：0.2.0（P1），2026-10-29
+
+已按用户要求更新既有 `pet-nest-mobile` 的 Production，网站仍为 **https://pet-nest-mobile.pages.dev**。部署编号 `238b5a34-ae98-49fc-bec5-6c0da9859f1b`，上传包 `pet-nest-pages-20261029-125806.zip`，31 个静态文件，SHA-256 为 `36b63a8da566c4150dca2c0a10073a4b442eaac4d40160cc396ad644decfde95`。Cloudflare 确认全部上传且发布成功；13 个线上入口、28 个 JS/CSS 与本地构建一致，测试账号登录及社区/个人页读取正常，设置页显示 0.2.0。详细检查和回退说明见 [P1 发布记录](RELEASE-0.2.0.md)。
+
+后端继续使用原开发项目，域名不变，无需再次调整 Auth 回跳或 CORS。本次没有申请新 Token 或改为 Git 自动部署。以下 2026-10-28 的 P0 发布过程作为历史保留，文件数和测试数字不代表当前版本。
+
+## 首次发布历史
+
 发布日期：2026-10-28（Asia/Shanghai）。
 
 测试网址：**https://pet-nest-mobile.pages.dev**。连接现有 Supabase 开发项目 pet-nest-dev，账号、宠物和记录使用同一份云端数据。2026-10-28 用户已反馈验证码输入修复后的测试通过；真实手机浏览器的布局、软键盘和上传等测试由用户继续进行。

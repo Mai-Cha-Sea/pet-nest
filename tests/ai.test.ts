@@ -275,6 +275,35 @@ describe('AI context and safety', () => {
     '建议使用抗生素。',
     '每次注射 2 毫升。',
   ])('blocks unsafe medical output: %s', (raw) => expect(safeAnswer(raw)).toContain('安全规则拦截'))
+  it('keeps record times in explicit Beijing time across the UTC date boundary', () => {
+    const messages = buildMessages(
+      {
+        pet: { name: '时区测试', species: 'cat', birth_date: '2024-01-01' },
+        records: [
+          { type: 'weight', content: { weight: 4.2 }, occurred_at: '2026-10-28T22:00:00Z' },
+        ],
+        history: [],
+      },
+      '请总结记录日期',
+    )
+    const context = JSON.parse(messages[1]!.content.split('\n')[1]!)
+    expect(context.time_zone).toBe('Asia/Shanghai')
+    expect(context.recent_30_days[0].occurred_at).toBe('2026-10-29T06:00:00.000+08:00')
+    expect(context.pet.birth_date).toBe('2024-01-01')
+    expect(messages[0]!.content).toContain('北京时间')
+  })
+  it('does not invent a timestamp when a repository supplies an invalid date', () => {
+    const messages = buildMessages(
+      {
+        pet: { name: '时区测试', species: 'cat' },
+        records: [{ type: 'weight', content: { weight: 4.2 }, occurred_at: 'invalid' }],
+        history: [],
+      },
+      '请总结',
+    )
+    const context = JSON.parse(messages[1]!.content.split('\n')[1]!)
+    expect(context.recent_30_days[0].occurred_at).toBeNull()
+  })
   it('appends exactly one disclaimer and rejects truncation', () => {
     expect(safeAnswer(`建议记录食欲。${DISCLAIMER}`).split(DISCLAIMER)).toHaveLength(2)
     expect(() =>
