@@ -427,3 +427,30 @@
   border-bottom: 1px solid var(--line);
   padding: 10px;
 }
+.community-like-total {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  color: var(--green);
+}
+.profile-social-panel {
+  margin-bottom: 20px;
+}
+.profile-social-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 20px 0;
+  text-align: center;
+}
+.profile-social-stats dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+.profile-social-stats dd {
+  margin: 8px 0 0;
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--green);
+}

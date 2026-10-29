@@ -6,6 +6,7 @@ import { configured } from '../lib/supabase'
 import { errorMessage } from '../lib/errors'
 import { cleanup } from '../lib/api'
 import Notice from '../components/Notice.vue'
+import { version as appVersion } from '../../package.json'
 const router = useRouter(),
   error = ref(''),
   busy = ref(false),
@@ -56,9 +57,16 @@ async function clean() {
     </section>
     <section class="panel">
       <h2>隐私与数据</h2>
+      <p class="legal-links">
+        <RouterLink to="/terms">查看完整用户协议</RouterLink
+        ><RouterLink to="/privacy">查看完整隐私政策</RouterLink>
+      </p>
       <p>
-        宠物档案、日常记录、图片与 AI 对话仅归当前账号所有。密码由 Supabase Auth
+        宠物档案、日常记录、私有头像和异常图片、AI 对话仅本人可访问。密码由 Supabase Auth
         管理。图片使用私有存储，查看链接短时有效，请不要转发。
+      </p>
+      <p>
+        主动发布到宠友社区的昵称、配文、标签、图片和评论，会向已登录的社区成员展示。关联宠物只分享名称，不公开档案或健康记录。当前使用词库检查文字，不识别图片中的文字或画面；发现不当内容可举报。
       </p>
       <p>
         向 AI 提问时，会将所选宠物资料、最近 30 天记录摘要和当前会话最近 10 轮成功对话发送给
@@ -79,7 +87,7 @@ async function clean() {
     </section>
     <section class="panel">
       <h2>关于宠物小窝</h2>
-      <p>版本 0.1.0 · P0 核心版。为每一个小生命，记录每一天。</p>
+      <p>版本 {{ appVersion }} · P1 宠物记录与社区版。为每一个小生命，记录每一天。</p>
       <p>
         本应用用于养护记录与咨询参考，不提供兽医诊断、在线处方或用药推荐。大量出血、抽搐、疑似误食异物等情况，请立即联系或前往线下宠物医院。
       </p>

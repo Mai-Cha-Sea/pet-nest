@@ -13,6 +13,7 @@ vi.mock('../src/lib/supabase', () => ({ configured: true, client: () => ({ auth 
 vi.mock('../src/stores/auth', () => ({ session: { value: null } }))
 const wrappers: ReturnType<typeof mount>[] = []
 const success = { data: { session: { user: { id: 'auth-test-user' } } }, error: null }
+const consent = { accepted: true, terms_version: '2026-10-29', privacy_version: '2026-10-29' }
 async function render(path = '/auth') {
   const router = createRouter({
     history: createMemoryHistory(),
@@ -106,6 +107,7 @@ describe('email and phone password sign-in through Supabase Auth', () => {
       .find((b) => b.text() === '邮箱注册')!
       .trigger('click')
     await wrapper.get('input[autocomplete="nickname"]').setValue('测试者')
+    await wrapper.get('input[type="checkbox"]').setValue(true)
     await wrapper.get('input[type="email"]').setValue('tester@example.com')
     await wrapper.get('input[type="password"]').setValue('UnitTest!Pass9')
     await wrapper.get('form').trigger('submit')
@@ -113,7 +115,10 @@ describe('email and phone password sign-in through Supabase Auth', () => {
     expect(auth.signUp).toHaveBeenCalledWith({
       email: 'tester@example.com',
       password: 'UnitTest!Pass9',
-      options: { data: { nickname: '测试者' }, emailRedirectTo: window.location.origin + '/auth' },
+      options: {
+        data: { nickname: '测试者', legal_consent: consent },
+        emailRedirectTo: window.location.origin + '/auth',
+      },
     })
     expect(wrapper.find('input[type="tel"]').exists()).toBe(false)
     expect(wrapper.text()).toContain('请打开注册邮箱')
@@ -147,6 +152,7 @@ describe('email and phone password sign-in through Supabase Auth', () => {
       .find((b) => b.text() === '手机号注册')!
       .trigger('click')
     await wrapper.get('input[autocomplete="nickname"]').setValue('手机用户')
+    await wrapper.get('input[type="checkbox"]').setValue(true)
     await wrapper.get('input[type="tel"]').setValue('13900001234')
     await wrapper.get('input[type="password"]').setValue('UnitTest!Pass9')
     await wrapper.get('form').trigger('submit')
@@ -154,7 +160,7 @@ describe('email and phone password sign-in through Supabase Auth', () => {
     expect(auth.signUp).toHaveBeenCalledWith({
       phone: '+8613900001234',
       password: 'UnitTest!Pass9',
-      options: { data: { nickname: '手机用户' } },
+      options: { data: { nickname: '手机用户', legal_consent: consent } },
     })
     expect(router.currentRoute.value.path).toBe('/auth')
     expect(wrapper.text()).toContain('通过短信验证后才会完成注册')
@@ -183,6 +189,7 @@ describe('email and phone password sign-in through Supabase Auth', () => {
       .find((b) => b.text() === '手机号注册')!
       .trigger('click')
     await wrapper.get('input[autocomplete="nickname"]').setValue('手机用户')
+    await wrapper.get('input[type="checkbox"]').setValue(true)
     await wrapper.get('input[type="tel"]').setValue('13900001234')
     await wrapper.get('input[type="password"]').setValue('UnitTest!Pass9')
     await wrapper.get('form').trigger('submit')
@@ -202,6 +209,7 @@ describe('email and phone password sign-in through Supabase Auth', () => {
       .find((b) => b.text() === '手机号注册')!
       .trigger('click')
     await wrapper.get('input[type="tel"]').setValue('13900001234')
+    await wrapper.get('input[type="checkbox"]').setValue(true)
     await wrapper
       .findAll('button')
       .find((b) => b.text() === '已有验证码，继续验证')!
@@ -219,5 +227,38 @@ describe('email and phone password sign-in through Supabase Auth', () => {
       type: 'sms',
     })
     expect(router.currentRoute.value.path).toBe('/pets')
+  })
+  it('requires explicit consent for either registration channel and leaves legal links available', async () => {
+    const { wrapper } = await render()
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === '注册')!
+      .trigger('click')
+    expect((wrapper.get('input[type="checkbox"]').element as HTMLInputElement).checked).toBe(false)
+    for (const method of ['邮箱注册', '手机号注册']) {
+      await wrapper
+        .findAll('button')
+        .find((b) => b.text() === method)!
+        .trigger('click')
+      await wrapper.get('form').trigger('submit')
+      await flushPromises()
+      expect(auth.signUp).not.toHaveBeenCalled()
+      expect(wrapper.get('[role="alert"]').text()).toContain('同意用户协议')
+    }
+    for (const path of ['/terms', '/privacy']) {
+      const link = wrapper.get(`a[href="${path}"]`)
+      expect(link.attributes('target')).toBe('_blank')
+      expect(link.attributes('rel')).toContain('noopener')
+    }
+    await wrapper.get('input[type="checkbox"]').setValue(true)
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === '登录')!
+      .trigger('click')
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === '注册')!
+      .trigger('click')
+    expect((wrapper.get('input[type="checkbox"]').element as HTMLInputElement).checked).toBe(false)
   })
 })

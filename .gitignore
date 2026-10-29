@@ -12,8 +12,10 @@ supabase/.branches/
 .tools/
 test-results/
 *.tsbuildinfo
+~$*.docx
 /api key.txt
 /aip key.txt
 /1793160748465.txt
 /测试账号.local.md
 /artifacts/pages/
+/artifacts/build-backup-*/

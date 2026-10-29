@@ -4,7 +4,7 @@ Vue 3 + TypeScript + Vite 前端，Supabase PostgreSQL/Auth/Storage，Edge Funct
 
 源码仓库：[Mai-Cha-Sea/pet-nest](https://github.com/Mai-Cha-Sea/pet-nest)（私有）。提交范围、克隆和后续更新见 [GitHub 说明](docs/GITHUB.md)。
 
-**手机测试站点已有 P0 发布：[pet-nest-mobile.pages.dev](https://pet-nest-mobile.pages.dev)。** 本地源码现已包含 P1，131 项自动测试通过；P1 前端发布情况以最新交付记录为准。用户选择本阶段仅用敏感词自动审核，图文通过配文/标签检查后发布，图片不做语义识别，保留举报人工复审。[P1 指南](docs/P1.md)及[免费 API 调研/审核方案](docs/MODERATION.md)说明权限与边界。公开配置在被 Git 忽略的 `.env.local`，部署方式见 [Cloudflare Pages](docs/CLOUDFLARE-PAGES.md)，验收见[测试结果](docs/TEST-RESULTS.md)。
+**手机测试站点已有 P0 发布：[pet-nest-mobile.pages.dev](https://pet-nest-mobile.pages.dev)。** 本地源码现已包含 P1；2026-10-29 全面回归中 150 项自动测试通过；先前完成的 26 组真实开发云端业务与 39 项响应式检查保留，本次另通过协议/获赞 3 组云端及 15 项布局验证。详细范围与待补项见 [101 项测试表](docs/TEST-MATRIX.md)及[本轮报告](docs/FULL-TEST-REPORT.md)，不能据此宣称真实设备与生产验收全部完成。[协议与获赞修复、用户验收反馈](docs/GAP-FIXES.md)已更新，前端新修正未发布。用户选择本阶段仅用敏感词自动审核，图文通过配文/标签检查后发布，图片不做语义识别，保留举报人工复审。[P1 指南](docs/P1.md)及[免费 API 调研/审核方案](docs/MODERATION.md)说明权限与边界。公开配置在被 Git 忽略的 `.env.local`，部署方式见 [Cloudflare Pages](docs/CLOUDFLARE-PAGES.md)，历史验收见[测试结果](docs/TEST-RESULTS.md)。
 
 ## 先在本机打开
 
@@ -18,7 +18,7 @@ npm.cmd run dev
 打开命令输出的本地地址（默认 [http://127.0.0.1:5173](http://127.0.0.1:5173)）。当前机器已经配置开发后端；两个专用测试账号的邮箱、手机号与密码见本机 `测试账号.local.md`，自动化配置保留在 `.env.test.local`，两者均被 Git 忽略，不随仓库分发。它们的演示档案明确标注为测试数据。换电脑时需重新填写公开连接配置，未配置时界面会提示。
 
 ```powershell
-npm.cmd run check          # 前端类型 + 三个 Edge 类型 + 131 项本地测试 + 构建
+npm.cmd run check          # 前端类型 + 三个 Edge 类型 + 150 项本地测试 + 构建
 npm.cmd run format:check   # 源码格式检查
 npm.cmd run test:database  # 全部迁移在 PostgreSQL WASM 引擎执行及 RLS 测试
 npm.cmd run check:auth     # 联网核对云端邮箱/手机均要求真实验证，不发送验证码

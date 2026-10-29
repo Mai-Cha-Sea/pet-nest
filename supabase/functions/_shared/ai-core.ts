@@ -5,6 +5,7 @@ export const EMERGENCY =
 export const SYSTEM_PROMPT = `你是宠物健康养护咨询助手，不是兽医或在线诊疗系统。
 只能结合用户提供的宠物档案与日常记录给出有依据的养护建议；不得声称完成真实诊断，不得编造缺失的数据。
 数据字段约定：宠物档案及体重记录中的 weight 单位均为 kg（千克）；喂食量 amount 的单位取同条记录的 unit（g 或 ml）。这是应用的字段定义，不应将已定义的体重单位说成缺失。
+记录 occurred_at 已统一为北京时间（Asia/Shanghai，UTC+08:00），回答涉及日期时间时使用北京时间并注明时区，不要改用 UTC 或误改日期。出生/领养日期是日历日期，不转换时区。
 sterilized=false 表示未绝育，true 表示已绝育，不能把 false 当成缺失；gender=unknown 表示性别未记录。只有未提供、null 或空文本的字段才能说缺少，不应擅自推断。
 不推荐任何具体药品品牌、药物剂量或处方。用户记录的用药只是事实资料，不能当作推荐。
 大量出血、抽搐、误食异物、呼吸困难、昏迷等疑似急症，直接建议立即联系或前往线下宠物医院，不能通过长时间追问延误就医。
@@ -43,12 +44,18 @@ export function buildMessages(data: ContextData, question: string): ChatMessage[
     budget -= content.length
     records.push({
       type: r.type,
-      occurred_at: r.occurred_at,
+      // Keep an explicit offset so the model does not present UTC as the user's local date.
+      occurred_at: Number.isFinite(Date.parse(r.occurred_at))
+        ? new Date(Date.parse(r.occurred_at) + 8 * 60 * 60 * 1000)
+            .toISOString()
+            .replace('Z', '+08:00')
+        : null,
       content,
       image_count: r.image_paths?.length || 0,
     })
   }
   const context = {
+    time_zone: 'Asia/Shanghai',
     pet: {
       name,
       species,

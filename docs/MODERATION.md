@@ -1,4 +1,4 @@
-# 内容审核选型与当前方案
+# 内容审核方案与操作说明
 
 核查日期：2026-10-28。用户在看到免费方案后明确选择“本阶段仅用敏感词自动审核”，因此本次没有开通外部服务、创建其密钥、发送用户内容到审核供应商或产生审核 API 费用。
 
@@ -27,7 +27,89 @@
 
 原来已存在的 pending 动态不批量公开。作者可在自己的详情页点击“重新提交自动审核”，使用相同的已关联图片路径重新检查并发布；其他账号不能操作。管理员已下架的 rejected 动态不能用该入口直接重新发布。
 
-普通用户仍无权写审核状态、编辑词库或调用管理员复核 RPC。举报和人工复审保留：通过 `community_reports` 查看 open 举报，核实后使用 `community_review` 下架违规动态；其余流程见 P1.md。已有签名图片链接可能继续有效最多 5 分钟，下架不等于撤销旧链接。
+普通用户仍无权写审核状态、编辑词库或调用管理员复核 RPC。举报和人工复审保留：通过 `community_reports` 查看 open 举报，核实后使用 `community_review` 下架违规动态；动态审核流程见 [P1 指南](P1.md#自动检查与举报复审)，评论操作见下节。已有签名图片链接可能继续有效最多 5 分钟，下架不等于撤销旧链接。
+
+## 人工审核：按 comment_id 查找、复核或下架评论
+
+当前没有应用内的管理员审核页面。管理员使用拥有该项目管理权限的 Supabase 账号，打开 [pet-nest-dev 控制台](https://supabase.com/dashboard/project/httzsurpqbbqwazrunsu)，进入 **SQL Editor → New query**。应用中的 Test_01 或普通测试账号不具备项目管理权限；不要把管理密钥放到前端。
+
+举报表 `public.community_reports.comment_id` 对应评论表 `public.community_comments.id`，不是举报记录自身的 `id`。以下用 `635b3e9c-5c2f-49ce-8db4-63ab8fb5595a` 演示；处理其他评论时，替换每条 SQL 中的评论 ID。**先查询，再选择一个处理分支，单独运行对应 SQL，不要一次运行本节全部代码。** 本节是操作说明，写入文档不代表已修改或删除该评论。
+
+### 1. 查询评论、作者、回复数量和关联举报
+
+先运行以下只读查询：
+
+```sql
+select c.id, c.post_id, c.body, c.parent_id, c.created_at,
+       p.nickname as author_nickname,
+       (select count(*) from public.community_comments reply
+        where reply.parent_id = c.id) as reply_count
+from public.community_comments c
+left join public.community_profiles p on p.user_id = c.user_id
+where c.id = '635b3e9c-5c2f-49ce-8db4-63ab8fb5595a'::uuid;
+
+select id as report_id, comment_id, reason, status, created_at
+from public.community_reports
+where comment_id = '635b3e9c-5c2f-49ce-8db4-63ab8fb5595a'::uuid
+order by created_at desc;
+```
+
+`body` 是评论正文，`parent_id` 非空表示该评论是回复；`post_id` 可用于在应用的 `/community/posts/<post_id>` 详情页核对上下文。举报状态 `open` 表示待处理，`dismissed` 表示举报不成立，`resolved` 表示已处理。不能仅凭举报理由就认定评论违规。
+
+查询没有返回评论时，先检查 ID、所在项目或评论是否已被删除，停止执行写操作。若准备删除，先保存查询结果；有回复时，还需查询并保存回复及其举报，避免级联删除后丢失复核依据：
+
+```sql
+select * from public.community_comments
+where parent_id = '635b3e9c-5c2f-49ce-8db4-63ab8fb5595a'::uuid;
+
+select * from public.community_reports
+where comment_id in (
+  select id from public.community_comments
+  where id = '635b3e9c-5c2f-49ce-8db4-63ab8fb5595a'::uuid
+     or parent_id = '635b3e9c-5c2f-49ce-8db4-63ab8fb5595a'::uuid
+);
+```
+
+### 2A. 复核正常：保留评论，驳回举报
+
+确认评论正常后，运行下面的 SQL，将该评论当前所有未处理举报改为 `dismissed`，评论及回复保留。若只处理一条举报，再在 `where` 中添加其 `id = '实际举报UUID'::uuid` 条件。
+
+```sql
+update public.community_reports
+set status = 'dismissed'
+where comment_id = '635b3e9c-5c2f-49ce-8db4-63ab8fb5595a'::uuid
+  and status = 'open'
+returning id, comment_id, status;
+```
+
+检查返回的举报 ID 和状态，再运行第 1 步查询，确认评论仍在、对应举报已处理。返回 0 行说明没有匹配的 open 举报，应重新核查，不能据此宣称完成处理。
+
+### 2B. 确认违规：删除评论
+
+**当前评论下架采用永久删除，没有隐藏状态或应用内恢复入口。删除父评论还会级联删除它的回复，以及这些评论关联的举报记录。** 保存必要证据并确认影响范围后，再单独执行。`community_review` 只审核动态，不能传入评论 ID；`community_delete_comment` 只允许登录用户删除本人评论，不用于管理员处理其他人的评论。
+
+下面示例使用评论 ID 和此前查到的正文 `11` 双重限定；**执行前必须以第 1 步的最新结果核对正文，处理其他内容时同步替换，正文中的单引号写成两个单引号。**
+
+```sql
+delete from public.community_comments
+where id = '635b3e9c-5c2f-49ce-8db4-63ab8fb5595a'::uuid
+  and body = '11'
+returning id, body;
+```
+
+成功时返回被删除的目标评论；返回 0 行时应停止并重新查询，不要通过移除 `where` 条件扩大删除范围。随后验证目标评论和关联举报均已不存在：
+
+```sql
+select
+  (select count(*) from public.community_comments
+   where id = '635b3e9c-5c2f-49ce-8db4-63ab8fb5595a'::uuid)
+    as remaining_comment,
+  (select count(*) from public.community_reports
+   where comment_id = '635b3e9c-5c2f-49ce-8db4-63ab8fb5595a'::uuid)
+    as remaining_reports;
+```
+
+两项应均为 0，再刷新对应动态详情页确认评论不再显示。由于举报也被级联删除，不能再把这些举报更新为 `resolved`；当前数据库没有独立的管理员操作审计表，审核人需另外记录处理时间、目标 ID、结论、原因及保存的证据。
 
 ## 词库维护与边界
 

@@ -93,7 +93,11 @@ watch(tab, () => loadPeople())
           ><button class="text-button" @click="tab = 'followers'">
             {{ person.follower_count }} 粉丝
           </button>
+          <span class="community-like-total"
+            ><Icon name="heart" :size="15" />{{ person.like_received_count ?? '—' }} 获赞</span
+          >
         </div>
+        <p class="muted compact">获赞为当前已发布动态收到的点赞合计。</p>
       </div>
       <button
         v-if="id !== session?.user.id"

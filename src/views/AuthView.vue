@@ -10,6 +10,7 @@ import NestIllustration from '../components/NestIllustration.vue'
 import PhoneInput from '../components/PhoneInput.vue'
 import { chinaPhone, verificationCode, loginEmail } from '../../shared/auth'
 import { useCooldown } from '../lib/useCooldown'
+import { registrationConsent } from '../../shared/legal'
 const router = useRouter(),
   route = useRoute(),
   mode = ref<'login' | 'register'>('login'),
@@ -18,6 +19,7 @@ const router = useRouter(),
   phone = ref(''),
   password = ref(''),
   nickname = ref(''),
+  agreed = ref(false),
   pendingPhone = ref(''),
   code = ref(''),
   busy = ref(false),
@@ -27,6 +29,7 @@ const resendCooldown = useCooldown()
 function switchMode(next: 'login' | 'register') {
   if (busy.value) return
   mode.value = next
+  agreed.value = false
   pendingPhone.value = ''
   code.value = ''
   error.value = ''
@@ -50,6 +53,7 @@ function resumeRegistration() {
   error.value = ''
   success.value = ''
   try {
+    if (!agreed.value) throw new Error('请先阅读并同意用户协议与隐私政策。')
     pendingPhone.value = chinaPhone(phone.value)
     password.value = ''
     code.value = ''
@@ -99,6 +103,8 @@ async function submit() {
   error.value = ''
   success.value = ''
   try {
+    if (mode.value === 'register' && !agreed.value)
+      throw new Error('请先阅读并同意用户协议与隐私政策。')
     const auth = client().auth
     const identifier =
       loginMethod.value === 'phone'
@@ -111,7 +117,7 @@ async function submit() {
             ...identifier,
             password: password.value,
             options: {
-              data: { nickname: nickname.value.trim() },
+              data: { nickname: nickname.value.trim(), legal_consent: registrationConsent() },
               ...(loginMethod.value === 'email'
                 ? { emailRedirectTo: window.location.origin + '/auth' }
                 : {}),
@@ -218,8 +224,27 @@ async function submit() {
             minlength="8"
             maxlength="128"
             :autocomplete="mode === 'register' ? 'new-password' : 'current-password'"
-            placeholder="至少 8 位密码" /></label
-        ><button class="button full" :disabled="busy || !configured">
+            placeholder="至少 8 位密码"
+        /></label>
+        <label v-if="mode === 'register'" class="agreement-consent">
+          <input
+            v-model="agreed"
+            type="checkbox"
+            required
+            :disabled="busy"
+            aria-label="同意用户协议和隐私政策"
+          />
+          <span
+            >我已阅读并同意
+            <RouterLink to="/terms" target="_blank" rel="noopener noreferrer"
+              >《用户协议》</RouterLink
+            >和
+            <RouterLink to="/privacy" target="_blank" rel="noopener noreferrer"
+              >《隐私政策》</RouterLink
+            >。链接在新标签页打开。</span
+          >
+        </label>
+        <button class="button full" :disabled="busy || !configured">
           {{ busy ? '请稍候…' : mode === 'login' ? '登录小窝' : '创建账号'
           }}<Icon name="arrow" :size="18" />
         </button>
@@ -264,6 +289,10 @@ async function submit() {
         </button>
       </form>
       <p class="privacy-line"><Icon name="deworming" :size="15" />密码由 Supabase Auth 安全管理</p>
+      <nav class="legal-links" aria-label="用户协议与隐私政策">
+        <RouterLink to="/terms" target="_blank" rel="noopener noreferrer">用户协议</RouterLink>
+        <RouterLink to="/privacy" target="_blank" rel="noopener noreferrer">隐私政策</RouterLink>
+      </nav>
       <RouterLink to="/settings" class="text-button">环境配置与隐私说明</RouterLink>
     </div>
   </section>

@@ -74,6 +74,7 @@ beforeEach(() => {
     nickname: '测试宠友',
     following_count: 0,
     follower_count: 0,
+    like_received_count: 0,
     is_following: false,
   })
   mocks.getPets.mockResolvedValue([])

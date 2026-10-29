@@ -56,6 +56,7 @@ export interface CommunityPerson {
   nickname: string
   following_count: number
   follower_count: number
+  like_received_count: number
   is_following: boolean
 }
 export interface CommunityComment {

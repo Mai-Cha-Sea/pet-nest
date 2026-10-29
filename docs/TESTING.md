@@ -10,21 +10,27 @@ npm.cmd run check:auth   # 真实云端：邮箱/手机启用且均不自动确�
 npm.cmd run test:preview # 先 build；自动启动/关闭 4173 检查生产入口和深层路由
 ```
 
-`check` 包含前端 TypeScript、三个 Edge Function 的 Deno 类型检查、131 项 Vitest、本机生产构建和前端产物安全扫描。P1 专项、词库自动检查及举报复审验收见 P1.md、MODERATION.md。
+`check` 包含前端 TypeScript、三个 Edge Function 的 Deno 类型检查、150 项 Vitest、本机生产构建和前端产物安全扫描。逐项步骤与结果见 [101 项测试表](TEST-MATRIX.md)、[2026-10-29 全面测试报告](FULL-TEST-REPORT.md)。P1 专项、词库自动检查及举报复审验收见 P1.md、MODERATION.md。
 
-| 测试文件                    | 验证内容                                                                                                          | 外部依赖                                              |
-| --------------------------- | ----------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| tests/database.test.ts      | 全部迁移执行、PostgreSQL RLS/外键/列权限、六类记录、Storage 策略、级联/队列、数量/额度与函数权限                  | PGlite，Supabase 平台表为夹具                         |
-| tests/domain.test.ts        | 档案、资料、日期、六类记录、AI 请求参数验证                                                                       | 无                                                    |
-| tests/ai.test.ts            | HTTP 编排正常/失败、鉴权边界、错误映射、超时、限流、无效响应、幂等、上下文、急症、免责声明与用药拦截              | 仓储和模型 HTTP 传输注入测试实现，不调用真实 DeepSeek |
-| tests/views.test.ts         | 实际 Vue 表单、宠物选择、非法输入、空状态、重复提交、UUID 重试、AI 思考/即时回答/历史故障/去重/状态检查与文本渲染 | jsdom；API 层 mock                                    |
-| tests/api.test.ts           | 丢失响应后的宠物/记录重试、完整读取 1200 条历史、图片 MIME/文件头/大小、上传提交未知时避免误删文件                | Supabase 传输 mock                                    |
-| tests/auth-view.test.ts     | 邮箱/+86 手机号登录注册、真实验证码等待流程、失败不显示发送成功                                                   | SDK mock                                              |
-| tests/account.test.ts       | 中国大陆格式、绑定/验证同一用户、待确认状态、占用及身份不匹配                                                     | SDK mock                                              |
-| tests/bindings-view.test.ts | 个人中心绑定表单、验证码确认、窗口返回刷新、恢复待验证及发送失败                                                  | API mock                                              |
-| tests/sms.test.ts           | 阿里官方 ACS3 固定签名向量、回调验签、号码/OTP 校验、并发去重及上游失败                                           | 标准签名真实计算，数据库与发送传输注入；不发送短信    |
+| 测试文件                      | 验证内容                                                                                                          | 外部依赖                                              |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| tests/database.test.ts        | 全部迁移执行、PostgreSQL RLS/外键/列权限、六类记录、Storage 策略、级联/队列、数量/额度与函数权限                  | PGlite，Supabase 平台表为夹具                         |
+| tests/domain.test.ts          | 档案、资料、日期、六类记录、AI 请求参数验证                                                                       | 无                                                    |
+| tests/ai.test.ts              | HTTP 编排正常/失败、鉴权边界、错误映射、超时、限流、无效响应、幂等、上下文、急症、免责声明与用药拦截              | 仓储和模型 HTTP 传输注入测试实现，不调用真实 DeepSeek |
+| tests/views.test.ts           | 实际 Vue 表单、宠物选择、非法输入、空状态、重复提交、UUID 重试、AI 思考/即时回答/历史故障/去重/状态检查与文本渲染 | jsdom；API 层 mock                                    |
+| tests/api.test.ts             | 丢失响应后的宠物/记录重试、完整读取 1200 条历史、图片 MIME/文件头/大小、上传提交未知时避免误删文件                | Supabase 传输 mock                                    |
+| tests/auth-view.test.ts       | 邮箱/+86 手机号登录注册、真实验证码等待流程、失败不显示发送成功                                                   | SDK mock                                              |
+| tests/account.test.ts         | 中国大陆格式、绑定/验证同一用户、待确认状态、占用及身份不匹配                                                     | SDK mock                                              |
+| tests/bindings-view.test.ts   | 个人中心绑定表单、验证码确认、窗口返回刷新、恢复待验证及发送失败                                                  | API mock                                              |
+| tests/sms.test.ts             | 阿里官方 ACS3 固定签名向量、回调验签、号码/OTP 校验、并发去重及上游失败                                           | 标准签名真实计算，数据库与发送传输注入；不发送短信    |
+| tests/growth.test.ts          | 真实体重数值、三点门槛、相同时间戳、时间范围切换/慢响应及可读数值表                                               | jsdom、API 边界 mock                                  |
+| tests/community.test.ts       | 标签去重、数量/长度/控制字符边界                                                                                  | 无                                                    |
+| tests/community-views.test.ts | 社区开通、图文重试、防重复互动、即时评论、旧 pending 重审及标签说明                                               | jsdom、RPC/Storage 边界 mock                          |
+| tests/router.test.ts          | 匿名可读隐私说明；宠物/AI/社区仍需登录；返回路径及 404                                                            | jsdom、认证状态 mock                                  |
 
 测试夹具只存在 tests 中，应用没有假 API、localStorage 模拟业务数据库或硬编码宠物。云端验收另外创建了真实 Auth 测试账号和明确标注的测试档案，数据实际保存在 Supabase。PGlite 并不作为运行时后端。
+
+新增 tests/legal-profile.test.ts 覆盖两份协议全文和两处获赞/错误/重试；注册页默认未同意、两种注册方式的版本声明，以及数据库留存/计数也有回归。最新修复及用户反馈见 [GAP-FIXES.md](GAP-FIXES.md)。`scripts/gap-cloud.mjs` 要求进程内 TEST_ADMIN_KEY 与 TEST_ALLOW_GAP_TESTS=yes，只创建和清理临时账号，不发送短信/邮件或调用模型。
 
 ## 准备两个真实测试账号
 
@@ -56,6 +62,8 @@ node --env-file=.env.test.local scripts/live-smoke.mjs
 未配置时运行 `npm.cmd run test:live` 会输出 SKIPPED 并非零退出，不能算作通过。
 
 ## 高级云端验收
+
+2026-10-29 新增的 `scripts/full-cloud.mjs` 使用随机临时账号，覆盖 P0/P1 的 26 组真实业务并在 finally 清理；不覆盖原 A/B 的数据或重置其额度。启用方法、真实模型次数、失败退出与清理复核见 [本轮报告](FULL-TEST-REPORT.md#重跑方法)。`scripts/measure-cloud.mjs` 只读采样两类接口及 Pages/CORS，不等于压测。下面旧高级脚本保留演示数据的行为不同，请先读说明，不要混用结果。
 
 `scripts/cloud-acceptance.mjs` 读取本地 `.env.test.local`，另外要求测试进程中的服务端 `TEST_ADMIN_KEY` 和显式 `TEST_ALLOW_ADMIN_TESTS=yes`。建议通过被忽略的独立服务端环境文件加载高权限 key，运行后移除不再需要的本机副本。不要把它改成 VITE_ 变量或输出到日志。
 
