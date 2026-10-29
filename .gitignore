@@ -12,6 +12,8 @@ supabase/.branches/
 .tools/
 test-results/
 *.tsbuildinfo
+__pycache__/
+*.py[cod]
 ~$*.docx
 /api key.txt
 /aip key.txt

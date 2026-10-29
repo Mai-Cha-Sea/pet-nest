@@ -80,6 +80,8 @@ docs/             审查、数据结构、接口、部署、测试、阶段结�
 
 ## 文档
 
+- [普通用户使用说明](docs/USER-GUIDE.md)
+- [四册 Word 手册及更新说明](docs/word/README.md)
 - [开发接手指南、注释约定与维护清单](docs/HANDOVER.md)
 - [源码注释补充范围与验证记录](docs/SOURCE-COMMENTS.md)
 - [数据库最终函数定义、权限与回归索引](docs/DATABASE-FUNCTIONS.md)
