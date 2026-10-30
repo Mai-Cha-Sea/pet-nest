@@ -4,7 +4,7 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import { Webhook } from 'standardwebhooks'
-import { signAliyunQuery } from '../supabase/functions/_shared/aliyun-sms'
+import { sendAliyunSms, signAliyunQuery } from '../supabase/functions/_shared/aliyun-sms'
 import { createSmsHandler } from '../supabase/functions/_shared/sms-handler'
 import type { SmsRepository } from '../supabase/functions/_shared/sms-handler'
 const secret = 'whsec_' + Buffer.alloc(32, 1).toString('base64')
@@ -51,6 +51,60 @@ function request(payload: unknown = fixture, id = crypto.randomUUID(), date = ne
   })
 }
 describe('Aliyun ACS3 request and signed Supabase SMS hook', () => {
+  it('allows a confirmed provider response taking longer than the old three-second cutoff', async () => {
+    const fetcher: typeof fetch = async (_input, init) =>
+      new Promise((resolve, reject) => {
+        const timer = setTimeout(
+          () => resolve(new Response(JSON.stringify({ Code: 'OK', Success: true }))),
+          3250,
+        )
+        init?.signal?.addEventListener(
+          'abort',
+          () => {
+            clearTimeout(timer)
+            reject(init.signal?.reason)
+          },
+          { once: true },
+        )
+      })
+    const result = await sendAliyunSms(
+      {
+        accessKeyId: 'fixture-key',
+        accessKeySecret: 'fixture-secret',
+        signName: '测试签名',
+        templateCode: '100001',
+        paramName: 'code',
+        extraParams: { min: '5' },
+      },
+      '8613900001234',
+      '654321',
+      fetcher,
+    )
+    expect(result).toEqual({ ok: true, code: 'OK' })
+  }, 7000)
+  it('still aborts an unconfirmed provider request without retrying or claiming success', async () => {
+    const fetcher = vi.fn<typeof fetch>(
+      async (_input, init) =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => reject(init.signal?.reason), { once: true })
+        }),
+    )
+    const result = await sendAliyunSms(
+      {
+        accessKeyId: 'fixture-key',
+        accessKeySecret: 'fixture-secret',
+        signName: '测试签名',
+        templateCode: '100001',
+        paramName: 'code',
+        extraParams: { min: '5' },
+      },
+      '8613900001234',
+      '654321',
+      fetcher,
+    )
+    expect(result).toEqual({ ok: false, code: 'PROVIDER_TIMEOUT' })
+    expect(fetcher).toHaveBeenCalledOnce()
+  }, 7000)
   it('matches the exact published Alibaba Cloud signature vector', async () => {
     const result = await signAliyunQuery({
       host: 'ecs.cn-shanghai.aliyuncs.com',
@@ -80,7 +134,12 @@ describe('Aliyun ACS3 request and signed Supabase SMS hook', () => {
     expect(url.searchParams.get('ReturnVerifyCode')).toBe('false')
     expect(JSON.parse(url.searchParams.get('TemplateParam')!)).toEqual({ min: '5', code: '654321' })
     expect(url.searchParams.get('ValidTime')).toBe('300')
-    expect(s.repo.finish).toHaveBeenCalledWith(expect.any(String), 'sent', 'OK')
+    expect(s.repo.finish).toHaveBeenCalledWith(
+      expect.any(String),
+      'sent',
+      'OK',
+      expect.any(AbortSignal),
+    )
     expect(await response.json()).toEqual({})
   })
   it('rejects missing, altered and expired webhook signatures without contacting the provider', async () => {
@@ -137,7 +196,12 @@ describe('Aliyun ACS3 request and signed Supabase SMS hook', () => {
     const res = await s.handler(request(fixture, id))
     expect(res.status).toBe(503)
     expect(await res.text()).not.toContain('654321')
-    expect(s.repo.finish).toHaveBeenCalledWith(id, 'failed', 'isv.BUSINESS_LIMIT_CONTROL')
+    expect(s.repo.finish).toHaveBeenCalledWith(
+      id,
+      'failed',
+      'isv.BUSINESS_LIMIT_CONTROL',
+      expect.any(AbortSignal),
+    )
     expect((await s.handler(request(fixture, id))).status).toBe(503)
     expect(s.fetcher).toHaveBeenCalledOnce()
   })
@@ -149,6 +213,7 @@ describe('Aliyun ACS3 request and signed Supabase SMS hook', () => {
       expect.any(String),
       'failed',
       'DELIVERY_RESULT_UNKNOWN',
+      expect.any(AbortSignal),
     )
   })
   it('fails closed when secrets or the idempotency store are unavailable', async () => {
@@ -163,6 +228,23 @@ describe('Aliyun ACS3 request and signed Supabase SMS hook', () => {
     // Recreate with a repository failure because the handler retains its repo object.
     expect((await other.handler(request())).status).toBe(503)
     expect(other.fetcher).not.toHaveBeenCalled()
+  })
+  it('does not start a provider send when database work has used up the hook budget', async () => {
+    const s = setup()
+    const req = request()
+    const clock = vi.spyOn(performance, 'now').mockReturnValueOnce(0).mockReturnValue(4200)
+    try {
+      expect((await s.handler(req)).status).toBe(503)
+      expect(s.fetcher).not.toHaveBeenCalled()
+      expect(s.repo.finish).toHaveBeenCalledWith(
+        expect.any(String),
+        'failed',
+        'HOOK_BUDGET_EXHAUSTED',
+        expect.any(AbortSignal),
+      )
+    } finally {
+      clock.mockRestore()
+    }
   })
   it('rejects methods and oversized payloads', async () => {
     const s = setup()

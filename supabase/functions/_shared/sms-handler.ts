@@ -11,8 +11,8 @@ import { sendAliyunSms } from './aliyun-sms.ts'
  * 事件级幂等仓库；一次 Hook 只受理一次发送，pending/failed 不静默重发。
  */
 export interface SmsRepository {
-  reserve(id: string): Promise<{ duplicate: boolean; status: string }>
-  finish(id: string, status: 'sent' | 'failed', code: string): Promise<void>
+  reserve(id: string, signal?: AbortSignal): Promise<{ duplicate: boolean; status: string }>
+  finish(id: string, status: 'sent' | 'failed', code: string, signal?: AbortSignal): Promise<void>
 }
 interface SmsDeps {
   env: (name: string) => string | undefined
@@ -106,9 +106,12 @@ export function createSmsHandler(deps: SmsDeps) {
       !/^[A-Za-z_][\w]{0,50}$/.test(config.paramName)
     )
       return respond(503, 'SMS_NOT_CONFIGURED')
+    // 外部 HTTP Hook 上限为 5 秒；数据库与供应商共享 4.4 秒预算，发送后留 300ms 写状态。
+    const startedAt = performance.now()
+    const signal = AbortSignal.timeout(4400)
     let reserved: Awaited<ReturnType<SmsRepository['reserve']>>
     try {
-      reserved = await deps.repo.reserve(event)
+      reserved = await deps.repo.reserve(event, signal)
     } catch {
       return respond(503, 'SMS_STATE_UNAVAILABLE')
     }
@@ -118,9 +121,13 @@ export function createSmsHandler(deps: SmsDeps) {
       return reserved.status === 'sent'
         ? respond(200)
         : respond(503, 'SMS_PREVIOUS_DELIVERY_UNCONFIRMED')
-    const result = await sendAliyunSms(config, phone, payload.sms.otp, deps.fetch)
+    const timeoutMs = Math.min(4000, Math.floor(4100 - (performance.now() - startedAt)))
+    const result =
+      timeoutMs > 0
+        ? await sendAliyunSms(config, phone, payload.sms.otp, deps.fetch, { timeoutMs, signal })
+        : { ok: false, code: 'HOOK_BUDGET_EXHAUSTED' }
     try {
-      await deps.repo.finish(event, result.ok ? 'sent' : 'failed', result.code)
+      await deps.repo.finish(event, result.ok ? 'sent' : 'failed', result.code, signal)
     } catch {
       return respond(503, 'SMS_STATE_UNAVAILABLE')
     }

@@ -33,7 +33,8 @@ otp_expiry = 300
 # 服务端签名密钥由环境变量注入，真实值不写入版本库。
 [auth.hook.send_sms]
 enabled = true
-uri = "https://httzsurpqbbqwazrunsu.supabase.co/functions/v1/send-sms"
+# Auth Webhook 不可自定义区域请求头，用官方 query 参数固定到与数据库相同的新加坡区域。
+uri = "https://httzsurpqbbqwazrunsu.supabase.co/functions/v1/send-sms?forceFunctionRegion=ap-southeast-1"
 secrets = "env(SEND_SMS_HOOK_SECRET)"
 
 [functions.ai-chat]

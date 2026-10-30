@@ -1,5 +1,15 @@
 # +86 手机号、绑定与阿里云短信认证
 
+## 2026-10-30 真实发送故障排查（收件仍待复测）
+
+用户在真实绑定时反馈 `Service currently unavailable due to hook`，且没有收到短信。云端发送记录在 15:01（北京时间）约 3.05 秒后记为 `DELIVERY_RESULT_UNKNOWN`；这是发送结果未知，不能作为送达成功，也不能只把该错误转换成“已发送”。
+
+服务端供应商等待上限由 3 秒调整为最多 4 秒，数据库抢占、供应商请求与状态写入共享 4.4 秒 I/O 预算，发送后保留约 300ms 写状态。预算不足时不开始发送；数据库查询也接受同一取消信号。超时单独记录 `PROVIDER_TIMEOUT`，无效 JSON 记录 `INVALID_PROVIDER_RESPONSE`，仍不自动重试未知结果。Hook 返回明确不可用时，前端显示“验证消息服务暂时不可用，未确认发送成功，请稍后重试。”，保持错误状态。
+
+完整检查通过 172 项测试、前端及三个 Edge 的类型检查、构建与格式检查；受控测试确认 3.25 秒才返回 OK 的请求可以完成，始终无确认的请求仍超时失败。`send-sms` 已部署。但延长超时后的第一次真实重试仍在 15:22 记为 `PROVIDER_TIMEOUT`（约 3.77 秒），用户仍未收到短信，**此处不能声称已解决真实发送故障**。
+
+后续使用临时、验签保护的云端探测比较新加坡和东京的传输：未签名根请求及签名的不可投递号码请求均能返回，未投递真实短信。随后依据 [Supabase 官方区域调用说明](https://supabase.com/changelog/36850-update-to-edge-functions-regional-invocations)，把 Auth Hook URL 增加 `?forceFunctionRegion=ap-southeast-1`，固定到已核对的数据库所在新加坡区域。CLI diff/push 确认只有这一项 URI 改动，邮箱配置、验证要求和 Hook 密钥保持原值；云端认证检查通过。固定区域后的真实发送和收件仍待用户重新测试，不能用无投递探测替代。临时探测函数完成后移除。
+
 ## 2026-10-30 短信确认超时提示修复
 
 用户反馈短信已收到、验证码可用，但页面仍出现 `Failed to reach hook within maximum time of 5.000000 seconds`。Supabase [HTTP Auth Hook](https://supabase.com/docs/guides/auth/auth-hooks) 要求在 5 秒内返回；确认超时不能证明短信一定没有发送，也不能证明发送成功。

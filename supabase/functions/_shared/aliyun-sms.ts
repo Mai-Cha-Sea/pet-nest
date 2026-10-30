@@ -77,7 +77,8 @@ export interface AliyunSmsConfig {
   extraParams: Record<string, string>
 }
 /**
- * 向固定 PNVS 域名发送已生成的 OTP，3 秒超时，不开启供应商自动重试。
+ * 向固定 PNVS 域名发送已生成的 OTP，最多 4 秒，并受 Hook 剩余预算约束。
+ * 旧 3 秒可能提前中断仍能完成的请求；4 秒仍给 Auth 的 5 秒上限留出收尾空间。
  * 验证码 300 秒、间隔 60 秒；Auth 才是验证真伪的权威，额外模板参数不能覆盖实际 OTP。
  * 只返回 ok 和受限代码；超时/断网为结果未知，不能推断一定未发送。
  */
@@ -86,6 +87,7 @@ export async function sendAliyunSms(
   phone: string,
   otp: string,
   fetcher: typeof fetch,
+  options: { timeoutMs?: number; signal?: AbortSignal } = {},
 ) {
   const request = await signAliyunQuery({
     host: 'dypnsapi.aliyuncs.com',
@@ -107,11 +109,15 @@ export async function sendAliyunSms(
       Interval: '60',
     },
   })
+  const timeout = AbortSignal.timeout(
+    Math.max(1, Math.min(4000, Math.floor(options.timeoutMs ?? 4000))),
+  )
+  const signal = options.signal ? AbortSignal.any([timeout, options.signal]) : timeout
   try {
     const response = await fetcher(request.url, {
       method: 'POST',
       headers: request.headers,
-      signal: AbortSignal.timeout(3000),
+      signal,
     })
     if (!response.ok) return { ok: false, code: 'PROVIDER_HTTP_ERROR' }
     const data = await response.json()
@@ -121,8 +127,15 @@ export async function sendAliyunSms(
         : 'INVALID_PROVIDER_RESPONSE'
     const ok = code === 'OK' && data.Success === true
     return { ok, code: code === 'OK' && !ok ? 'PROVIDER_UNCONFIRMED' : code }
-  } catch {
+  } catch (error) {
     // Never log URLs, request headers, phone numbers, OTPs or provider payloads.
-    return { ok: false, code: 'DELIVERY_RESULT_UNKNOWN' }
+    return {
+      ok: false,
+      code: signal.aborted
+        ? 'PROVIDER_TIMEOUT'
+        : error instanceof SyntaxError
+          ? 'INVALID_PROVIDER_RESPONSE'
+          : 'DELIVERY_RESULT_UNKNOWN',
+    }
   }
 }

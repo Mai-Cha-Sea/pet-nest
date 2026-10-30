@@ -14,24 +14,27 @@ const repo: SmsRepository = {
   /**
    * 以事件唯一键抢占发送；主键冲突读取已有状态，绝不把回调重试当成新的短信。
    */
-  async reserve(id) {
-    const { error } = await db.from('sms_deliveries').insert({ event_id: id })
+  async reserve(id, signal) {
+    const insert = db.from('sms_deliveries').insert({ event_id: id })
+    const { error } = await (signal ? insert.abortSignal(signal) : insert)
     if (!error) return { duplicate: false, status: 'pending' }
     if (error.code !== '23505') throw error
-    const result = await db.from('sms_deliveries').select('status').eq('event_id', id).single()
+    const query = db.from('sms_deliveries').select('status').eq('event_id', id)
+    const result = await (signal ? query.abortSignal(signal) : query).single()
     if (result.error) throw result.error
     return { duplicate: true, status: result.data.status }
   },
   /**
    * 只允许 pending 转为最终结果，记录去敏供应商代码和时间；零行更新也视为失败。
    */
-  async finish(id, status, code) {
-    const { error, data } = await db
+  async finish(id, status, code, signal) {
+    const query = db
       .from('sms_deliveries')
       .update({ status, provider_code: code, finished_at: new Date().toISOString() })
       .eq('event_id', id)
       .eq('status', 'pending')
       .select('event_id')
+    const { error, data } = await (signal ? query.abortSignal(signal) : query)
     if (error || !data?.length) throw error || new Error('SMS_LOG_NOT_UPDATED')
   },
 }

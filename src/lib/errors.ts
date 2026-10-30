@@ -80,6 +80,9 @@ export function errorMessage(e: unknown): string {
     email_address_not_authorized: '当前邮件服务不允许向此邮箱发送，请联系管理员配置邮件服务。',
   }
   if (authErrors[code]) return authErrors[code]
+  // Hook 明确不可用仍是失败，不能混入“可能已收到短信”的确认超时恢复流程。
+  if (/^Service currently unavailable due to hook[.!]?$/i.test(raw.trim()))
+    return '验证消息服务暂时不可用，未确认发送成功，请稍后重试。'
   if (
     /Unable to get SMS provider|SMS provider is not configured|Unsupported phone provider/i.test(
       raw,
