@@ -13,7 +13,7 @@ import {
   requestEmailBinding,
 } from '../lib/account'
 import { session } from '../stores/auth'
-import { errorMessage } from '../lib/errors'
+import { errorMessage, isSmsHookTimeout, SMS_CONFIRMATION_PENDING } from '../lib/errors'
 import { configured } from '../lib/supabase'
 import { useCooldown } from '../lib/useCooldown'
 import { chinaPhone } from '../../shared/auth'
@@ -24,7 +24,8 @@ const account = ref<User>(),
   loading = ref(false),
   busy = ref(false),
   error = ref(''),
-  success = ref('')
+  success = ref(''),
+  smsNotice = ref('')
 const phone = ref(''),
   email = ref(''),
   code = ref(''),
@@ -71,6 +72,7 @@ function apply(user: User) {
   ) {
     pendingPhone.value = ''
     code.value = ''
+    smsNotice.value = ''
   }
   pendingEmail.value = user.new_email || ''
   if (pendingEmail.value && !email.value) email.value = pendingEmail.value
@@ -98,6 +100,7 @@ async function sendPhone() {
   busy.value = true
   error.value = ''
   success.value = ''
+  smsNotice.value = ''
   try {
     const result = await requestPhoneBinding(phone.value)
     apply(result.user)
@@ -108,7 +111,12 @@ async function sendPhone() {
       phoneCooldown.start()
     }
   } catch (e) {
-    error.value = errorMessage(e)
+    if (isSmsHookTimeout(e)) {
+      // 请求确认超时不是号码已绑定：仅保留输入与冷却，收到的验证码仍可交给 Auth 校验。
+      pendingPhone.value = localPhone(phone.value)
+      phoneCooldown.start()
+      smsNotice.value = SMS_CONFIRMATION_PENDING
+    } else error.value = errorMessage(e)
   } finally {
     busy.value = false
   }
@@ -121,6 +129,7 @@ async function verifyPhone() {
   busy.value = true
   error.value = ''
   success.value = ''
+  smsNotice.value = ''
   try {
     apply(await confirmPhoneBinding(phone.value, code.value))
     code.value = ''
@@ -141,6 +150,7 @@ async function sendEmail() {
   busy.value = true
   error.value = ''
   success.value = ''
+  smsNotice.value = ''
   try {
     const result = await requestEmailBinding(email.value)
     apply(result.user)
@@ -178,6 +188,7 @@ watch(phone, (next, previous) => {
   if (pendingPhone.value && localPhone(next) !== pendingPhone.value) {
     pendingPhone.value = ''
     success.value = ''
+    smsNotice.value = ''
   }
 })
 </script>
@@ -193,6 +204,7 @@ watch(phone, (next, previous) => {
       绑定后，邮箱与手机号都使用原密码，登录同一个小窝。宠物、记录和 AI 历史保持关联。
     </p>
     <Notice :error="error" :success="success" />
+    <p v-if="smsNotice" class="notice" role="status">{{ smsNotice }}</p>
     <p v-if="loading && !account" role="status">正在核对账号绑定状态…</p>
     <div v-if="account" class="binding-grid">
       <section>

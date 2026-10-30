@@ -106,6 +106,51 @@ describe('account binding forms and verification states', () => {
     expect(w.get('input[autocomplete="one-time-code"]').isVisible()).toBe(true)
     expect(w.text()).not.toContain('验证码请求已提交')
   })
+  it('treats a hook confirmation timeout as pending and still verifies the received code', async () => {
+    api.requestPhoneBinding.mockRejectedValue({
+      code: 'hook_timeout',
+      message: 'Failed to reach hook within maximum time of 5.000000 seconds',
+    })
+    api.confirmPhoneBinding.mockResolvedValue({
+      ...user,
+      phone: '8613900001234',
+      phone_confirmed_at: '2026-10-30',
+    })
+    const w = await render()
+    await w.get('input[type="tel"]').setValue('13900001234')
+    await w.get('form[aria-label="申请手机号验证码"]').trigger('submit')
+    await flushPromises()
+    expect(w.find('[role="alert"]').exists()).toBe(false)
+    expect(w.get('[role="status"]').text()).toContain('如已收到短信')
+    expect(w.text()).toContain('尚未生效')
+    expect(w.text()).not.toContain('验证码请求已提交')
+    expect(w.text()).not.toContain('手机号绑定成功')
+    expect(w.text()).not.toContain('Failed')
+    expect(w.text()).toContain('秒后可重新发送')
+    window.dispatchEvent(new Event('focus'))
+    await flushPromises()
+    expect(w.text()).toContain('待验证：+86 13900001234')
+    await w.get('input[autocomplete="one-time-code"]').setValue('654321')
+    await w.get('.binding-verification').trigger('submit')
+    await flushPromises()
+    expect(api.requestPhoneBinding).toHaveBeenCalledOnce()
+    expect(api.confirmPhoneBinding).toHaveBeenCalledWith('13900001234', '654321')
+    expect(w.text()).toContain('手机号绑定成功')
+    expect(w.text()).not.toContain('如已收到短信')
+  })
+  it('clears a pending timeout notice and code when the target phone changes', async () => {
+    api.requestPhoneBinding.mockRejectedValue({ code: 'hook_timeout', message: 'Hook timed out' })
+    const w = await render()
+    await w.get('input[type="tel"]').setValue('13900001234')
+    await w.get('form[aria-label="申请手机号验证码"]').trigger('submit')
+    await flushPromises()
+    expect(w.get('[role="status"]').text()).toContain('如已收到短信')
+    await w.get('input[autocomplete="one-time-code"]').setValue('654321')
+    await w.get('input[type="tel"]').setValue('13900005678')
+    expect(w.text()).not.toContain('如已收到短信')
+    expect(w.text()).not.toContain('待验证：+86 13900001234')
+    expect(w.get<HTMLInputElement>('input[autocomplete="one-time-code"]').element.value).toBe('')
+  })
   it('restores pending phone verification from the server after reopening the page', async () => {
     api.getAccount.mockResolvedValue({ ...user, new_phone: '8613900001234' })
     const w = await render()

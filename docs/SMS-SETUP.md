@@ -1,5 +1,13 @@
 # +86 手机号、绑定与阿里云短信认证
 
+## 2026-10-30 短信确认超时提示修复
+
+用户反馈短信已收到、验证码可用，但页面仍出现 `Failed to reach hook within maximum time of 5.000000 seconds`。Supabase [HTTP Auth Hook](https://supabase.com/docs/guides/auth/auth-hooks) 要求在 5 秒内返回；确认超时不能证明短信一定没有发送，也不能证明发送成功。
+
+手机号注册、重发和个人中心绑定现仅对 `hook_timeout`、`hook_timeout_after_retry` 及对应旧版固定英文消息显示中性提示：“如已收到短信，请输入验证码继续；未收到请在倒计时结束后重试。” 保留待验证号码、验证码输入和 60 秒冷却，不自动重发、不提前视为注册或绑定成功。已输入的验证码在重发超时时保留。验证码仍由 Supabase Auth 校验；短信提供商拒绝、未配置、限流和普通网络错误仍显示失败，邮箱流程不采用此恢复方式。
+
+修改位于 `src/lib/errors.ts`、`src/views/AuthView.vue`、`src/components/AccountBindings.vue`，没有改变服务端超时、Hook 验签或身份验证规则。新增组件及错误分类回归测试后，完整 `npm.cmd run check` 的 168 项测试、前端/Edge 类型检查、构建和格式检查通过。2026-10-30 已发布到既有 Pages 站点，13 个入口和 28 个 JS/CSS 与本地构建一致。本次使用受控测试验证超时后的界面及校验流程，没有发送真实短信；真实手机收件可用性来自用户反馈。
+
 核对日期：2026-10-28。当前用户使用的是「号码认证服务 PNVS → 短信认证」，不是普通「短信服务 SMS」。二者的接口、签名、模板、套餐不通用。
 
 ## 当前实现和验证范围

@@ -7,7 +7,7 @@
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { client, configured } from '../lib/supabase'
-import { errorMessage } from '../lib/errors'
+import { errorMessage, isSmsHookTimeout, SMS_CONFIRMATION_PENDING } from '../lib/errors'
 import { session } from '../stores/auth'
 import Icon from '../components/Icon.vue'
 import Notice from '../components/Notice.vue'
@@ -29,7 +29,8 @@ const router = useRouter(),
   code = ref(''),
   busy = ref(false),
   error = ref(''),
-  success = ref('')
+  success = ref(''),
+  smsNotice = ref('')
 const resendCooldown = useCooldown()
 /**
  * 切换登录/注册时清掉验证步骤和同意状态，避免旧流程被误继续。
@@ -42,6 +43,7 @@ function switchMode(next: 'login' | 'register') {
   code.value = ''
   error.value = ''
   success.value = ''
+  smsNotice.value = ''
 }
 /**
  * 切换标识类型时清理短信步骤；不自动向新号码发送请求。
@@ -53,6 +55,7 @@ function switchLoginMethod(next: 'email' | 'phone') {
   code.value = ''
   error.value = ''
   success.value = ''
+  smsNotice.value = ''
 }
 /**
  * 保存已验证会话并跳回站内地址；拒绝 // 开头的站外重定向。
@@ -69,6 +72,7 @@ function resumeRegistration() {
   if (busy.value) return
   error.value = ''
   success.value = ''
+  smsNotice.value = ''
   try {
     if (!agreed.value) throw new Error('请先阅读并同意用户协议与隐私政策。')
     pendingPhone.value = chinaPhone(phone.value)
@@ -86,6 +90,7 @@ async function verifyRegistration() {
   busy.value = true
   error.value = ''
   success.value = ''
+  smsNotice.value = ''
   try {
     const { data, error: e } = await client().auth.verifyOtp({
       phone: pendingPhone.value,
@@ -109,13 +114,18 @@ async function resendRegistration() {
   busy.value = true
   error.value = ''
   success.value = ''
+  smsNotice.value = ''
   try {
     const { error: e } = await client().auth.resend({ phone: pendingPhone.value, type: 'sms' })
     if (e) throw e
     resendCooldown.start()
     success.value = '验证码请求已重新提交，请查看短信。'
   } catch (e) {
-    error.value = errorMessage(e)
+    if (isSmsHookTimeout(e)) {
+      // Hook 可能已投递，只是 Auth 未及时收到回执；保留号码/验证码，不自动重发。
+      resendCooldown.start()
+      smsNotice.value = SMS_CONFIRMATION_PENDING
+    } else error.value = errorMessage(e)
   } finally {
     busy.value = false
   }
@@ -129,6 +139,7 @@ async function submit() {
   busy.value = true
   error.value = ''
   success.value = ''
+  smsNotice.value = ''
   try {
     if (mode.value === 'register' && !agreed.value)
       throw new Error('请先阅读并同意用户协议与隐私政策。')
@@ -162,7 +173,14 @@ async function submit() {
       success.value =
         '请打开注册邮箱，点击确认链接后回来登录。出于隐私保护，已注册的邮箱也可能收到此提示。'
   } catch (e) {
-    error.value = errorMessage(e)
+    if (mode.value === 'register' && loginMethod.value === 'phone' && isSmsHookTimeout(e)) {
+      // 只恢复短信确认步骤，仍由 verifyOtp 决定是否真正完成注册；不假称发送成功。
+      pendingPhone.value = chinaPhone(phone.value)
+      password.value = ''
+      code.value = ''
+      resendCooldown.start()
+      smsNotice.value = SMS_CONFIRMATION_PENDING
+    } else error.value = errorMessage(e)
   } finally {
     busy.value = false
   }
@@ -198,6 +216,7 @@ async function submit() {
         </button>
       </div>
       <Notice :error="error" :success="success" />
+      <p v-if="smsNotice" class="notice" role="status">{{ smsNotice }}</p>
       <p v-if="!configured" class="notice">
         尚未配置 Supabase，请按 README 设置 .env.local 后重启开发服务。
       </p>

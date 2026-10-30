@@ -7,6 +7,15 @@ $pagesBuild = Join-Path $pagesRoot 'dist'
 if (-not (Test-Path -LiteralPath (Join-Path $pagesBuild 'index.html'))) {
   throw 'Run npm.cmd run build first.'
 }
+$pagesHtml = [System.IO.File]::ReadAllText((Join-Path $pagesBuild 'index.html'))
+if ($pagesHtml -match '/src/|/@vite/|\.ts(?:["''?])' -or $pagesHtml -notmatch '/assets/[^"'']+\.js') {
+  throw 'The entry is development source, not a built Vite application. Run npm.cmd run build first.'
+}
+foreach ($pagesReference in [regex]::Matches($pagesHtml, '(?:src|href)=["''](/assets/[^"'']+)["'']')) {
+  if (-not (Test-Path -LiteralPath (Join-Path $pagesBuild $pagesReference.Groups[1].Value.TrimStart('/')) -PathType Leaf)) {
+    throw 'An entry asset is missing from dist.'
+  }
+}
 $pagesFiles = @(Get-ChildItem -LiteralPath $pagesBuild -Recurse -File -Force)
 foreach ($pagesFile in $pagesFiles) {
   if ($pagesFile.Length -gt 25MB) { throw 'A file exceeds the Pages 25 MiB upload limit.' }
@@ -33,10 +42,14 @@ try {
   if (@($pagesZip.Entries | Where-Object { $_.Name }).Count -ne $pagesFiles.Count) { throw 'ZIP file count mismatch.' }
   if ($pagesZip.Entries | Where-Object { $_.FullName.Contains('\') }) { throw 'ZIP paths must use forward slashes.' }
 } finally { $pagesZip.Dispose() }
+$pagesHasher = [System.Security.Cryptography.SHA256]::Create()
+$pagesStream = [System.IO.File]::OpenRead($pagesArchive)
+try { $pagesDigest = [System.BitConverter]::ToString($pagesHasher.ComputeHash($pagesStream)).Replace('-', '').ToLowerInvariant() }
+finally { $pagesStream.Dispose(); $pagesHasher.Dispose() }
 $pagesManifest = [ordered]@{
   archive = $pagesArchive
   files = $pagesFiles.Count
-  sha256 = (Get-FileHash -LiteralPath $pagesArchive -Algorithm SHA256).Hash.ToLowerInvariant()
+  sha256 = $pagesDigest
   publicAssetsOnly = $true
   createdAt = [DateTime]::UtcNow.ToString('o')
 }

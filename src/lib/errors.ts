@@ -4,6 +4,23 @@
  * 调用端须先去敏，不应传入含密钥的上游原始响应或调试堆栈。
  */
 import { ZodError } from 'zod'
+/**
+ * 仅识别 Auth HTTP Hook 的确认超时，不能把短信服务拒绝或普通断网当成已发送。
+ * SDK 提供 code 时优先覆盖两种超时；兼容旧服务只返回固定英文消息的情况。
+ * 调用者必须限定在短信申请/重发流程，验证验证码和邮箱流程仍按真实错误处理。
+ */
+export function isSmsHookTimeout(e: unknown): boolean {
+  if (typeof e !== 'object' || !e) return false
+  const code = 'code' in e ? String(e.code) : ''
+  if (code === 'hook_timeout' || code === 'hook_timeout_after_retry') return true
+  const raw = 'message' in e ? String(e.message) : ''
+  return /Failed to (?:reach hook within maximum time of|call hook after) \d+(?:\.\d+)? seconds/i.test(
+    raw,
+  )
+}
+// 条件提示，不声称短信已发出，更不提前视为注册或绑定成功。
+export const SMS_CONFIRMATION_PENDING =
+  '如已收到短信，请输入验证码继续；未收到请在倒计时结束后重试。'
 const messages: Record<string, string> = {
   CONTENT_BLOCKED: '内容包含不适合社区分享的词语，请调整后提交。',
   INVALID_TAGS: '最多填写 3 个不重复的标签，每个 1–20 字。',
@@ -58,6 +75,8 @@ export function errorMessage(e: unknown): string {
     over_email_send_rate_limit: '确认邮件发送过于频繁，请稍后再试。',
     sms_send_failed: '短信未发送成功，请稍后重试；若持续失败，请联系管理员检查短信服务。',
     sms_provider_disabled: '短信服务尚未配置，验证码未发送，请联系管理员。',
+    hook_timeout: '验证服务响应超时，请稍后重试。',
+    hook_timeout_after_retry: '验证服务暂时没有确认结果，请稍后重试。',
     email_address_not_authorized: '当前邮件服务不允许向此邮箱发送，请联系管理员配置邮件服务。',
   }
   if (authErrors[code]) return authErrors[code]

@@ -202,6 +202,110 @@ describe('email and phone password sign-in through Supabase Auth', () => {
     expect(wrapper.find('input[autocomplete="one-time-code"]').exists()).toBe(false)
     expect(router.currentRoute.value.path).toBe('/auth')
   })
+  it.each([
+    {
+      code: 'hook_timeout',
+      message: 'Failed to reach hook within maximum time of 5.000000 seconds',
+    },
+    { code: 'hook_timeout_after_retry', message: 'Hook retry timed out' },
+    new Error('Failed to reach hook within maximum time of 5.000000 seconds'),
+  ])(
+    'keeps SMS verification usable without an error or false sent claim after hook timeout %j',
+    async (timeout) => {
+      auth.signUp.mockResolvedValueOnce({ data: { session: null }, error: timeout })
+      const { wrapper, router } = await render()
+      await wrapper
+        .findAll('button')
+        .find((button) => button.text() === '注册')!
+        .trigger('click')
+      await wrapper
+        .findAll('button')
+        .find((button) => button.text() === '手机号注册')!
+        .trigger('click')
+      await wrapper.get('input[autocomplete="nickname"]').setValue('手机用户')
+      await wrapper.get('input[type="checkbox"]').setValue(true)
+      await wrapper.get('input[type="tel"]').setValue('13900001234')
+      await wrapper.get('input[type="password"]').setValue('UnitTest!Pass9')
+      await wrapper.get('form').trigger('submit')
+      await flushPromises()
+      expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+      expect(wrapper.get('[role="status"]').text()).toContain('如已收到短信')
+      expect(wrapper.text()).not.toContain('Failed')
+      expect(wrapper.text()).not.toContain('验证码请求已提交')
+      expect(
+        wrapper
+          .findAll('button')
+          .find((button) => button.text().includes('秒后可重新发送'))!
+          .attributes('disabled'),
+      ).toBeDefined()
+      expect(router.currentRoute.value.path).toBe('/auth')
+      expect(auth.signUp).toHaveBeenCalledOnce()
+      expect(auth.resend).not.toHaveBeenCalled()
+      await wrapper.get('input[autocomplete="one-time-code"]').setValue('654321')
+      await wrapper.get('form').trigger('submit')
+      await flushPromises()
+      expect(auth.verifyOtp).toHaveBeenCalledWith({
+        phone: '+8613900001234',
+        token: '654321',
+        type: 'sms',
+      })
+      expect(router.currentRoute.value.path).toBe('/pets')
+    },
+  )
+  it('does not turn an email hook timeout into SMS verification', async () => {
+    auth.signUp.mockResolvedValueOnce({
+      data: { session: null },
+      error: { code: 'hook_timeout', message: 'Hook timed out' },
+    })
+    const { wrapper } = await render()
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === '注册')!
+      .trigger('click')
+    await wrapper.get('input[type="checkbox"]').setValue(true)
+    await wrapper.get('input[autocomplete="nickname"]').setValue('邮箱用户')
+    await wrapper.get('input[type="email"]').setValue('tester@example.com')
+    await wrapper.get('input[type="password"]').setValue('UnitTest!Pass9')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true)
+    expect(wrapper.find('input[autocomplete="one-time-code"]').exists()).toBe(false)
+  })
+  it('keeps an existing code and restarts cooldown when resend confirmation times out', async () => {
+    const { wrapper } = await render()
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === '注册')!
+      .trigger('click')
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === '手机号注册')!
+      .trigger('click')
+    await wrapper.get('input[type="checkbox"]').setValue(true)
+    await wrapper.get('input[type="tel"]').setValue('13900001234')
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === '已有验证码，继续验证')!
+      .trigger('click')
+    await wrapper.get('input[autocomplete="one-time-code"]').setValue('654321')
+    auth.resend.mockResolvedValueOnce({
+      error: { code: 'hook_timeout', message: 'Hook timed out' },
+    })
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === '重新发送验证码')!
+      .trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+    expect(wrapper.get('[role="status"]').text()).toContain('如已收到短信')
+    expect(wrapper.get<HTMLInputElement>('input[autocomplete="one-time-code"]').element.value).toBe(
+      '654321',
+    )
+    expect(auth.resend).toHaveBeenCalledOnce()
+    expect(auth.signUp).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('秒后可重新发送')
+    expect(wrapper.text()).not.toContain('验证码请求已重新提交')
+  })
   it('reopens registration verification for an existing SMS without signing up or resending', async () => {
     const { wrapper, router } = await render()
     await wrapper
